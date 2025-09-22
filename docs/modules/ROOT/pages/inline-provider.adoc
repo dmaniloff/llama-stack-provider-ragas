@@ -1,0 +1,434 @@
+= Inline Provider Configuration
+:description: Detailed configuration guide for the inline RAGAS provider
+:keywords: inline, provider, local, configuration
+
+The inline provider runs RAGAS evaluations within the same process as the Llama Stack server, making it ideal for development, testing, and smaller-scale evaluations.
+
+== Overview
+
+The inline provider offers:
+
+* **Simple setup** - No external dependencies beyond the base requirements
+* **Fast execution** - Direct access to Llama Stack APIs without network overhead
+* **Easy debugging** - Logs and errors appear in the same process
+* **Resource efficiency** - No additional container or process overhead
+
+== Basic Configuration
+
+=== Minimal Setup
+
+[source,yaml]
+----
+# providers.d/inline/eval/ragas.yaml
+provider_type: inline
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+----
+
+This minimal configuration uses:
+
+* Default RAGAS settings
+* Standard timeout and retry values
+* All available RAGAS metrics
+
+=== Provider Registration
+
+Register the inline provider in your Llama Stack distribution:
+
+[source,yaml]
+----
+# distribution/run.yaml
+providers:
+  inference: ollama
+  memory: meta-reference
+  eval: ragas-inline  # Points to inline provider config
+
+provider_overrides:
+  ragas-inline:
+    embedding_model: "all-MiniLM-L6-v2"
+----
+
+== Advanced Configuration
+
+=== Performance Tuning
+
+[source,yaml]
+----
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    # Batch processing settings
+    batch_size: 20              # Process 20 samples at once
+    max_concurrent_requests: 4  # Parallel inference requests
+    
+    # Timeout and retry settings
+    timeout: 600               # 10 minutes per evaluation
+    max_retries: 5            # Retry failed requests
+    retry_delay: 2.0          # Seconds between retries
+    
+    # Memory management
+    clear_cache_after_eval: true    # Clear model cache after evaluation
+    max_memory_usage: "4GB"         # Memory limit
+----
+
+=== Metric Configuration
+
+Control which RAGAS metrics are computed:
+
+[source,yaml]
+----
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    # Select specific metrics
+    metrics:
+      - answer_relevancy
+      - context_precision
+      - faithfulness
+      - answer_correctness
+    
+    # Metric-specific parameters
+    metric_params:
+      answer_relevancy:
+        strictness: 3
+        embeddings_model: "all-MiniLM-L6-v2"
+      
+      context_precision:
+        strictness: 3
+      
+      faithfulness:
+        strictness: 3
+        embeddings_model: "all-MiniLM-L6-v2"
+      
+      answer_correctness:
+        weights:
+          answer_similarity: 0.6
+          answer_correctness: 0.4
+----
+
+=== Model Configuration
+
+Configure different models for different purposes:
+
+[source,yaml]
+----
+config:
+  # Primary embedding model
+  embedding_model: "all-MiniLM-L6-v2"
+  
+  ragas_config:
+    # Override embedding model for specific metrics
+    metric_params:
+      answer_relevancy:
+        embeddings_model: "sentence-transformers/all-mpnet-base-v2"
+      
+      faithfulness:
+        embeddings_model: "all-MiniLM-L6-v2"
+        llm_model: "llama-3-8b-instruct"  # For faithfulness scoring
+----
+
+== Integration Examples
+
+=== With Ollama
+
+Complete configuration for local development with Ollama:
+
+[source,yaml]
+----
+# distribution/run.yaml
+image_name: llamastack/distribution-meta-reference
+providers:
+  inference: ollama
+  memory: meta-reference
+  eval: ragas-inline
+  embeddings: ollama
+
+ollama_config:
+  url: "http://localhost:11434"
+  
+provider_overrides:
+  ragas-inline:
+    embedding_model: "all-MiniLM-L6-v2"
+    ragas_config:
+      batch_size: 10
+      timeout: 300
+      metrics:
+        - answer_relevancy
+        - context_precision
+        - faithfulness
+----
+
+=== With OpenAI
+
+Configuration using OpenAI models:
+
+[source,yaml]
+----
+providers:
+  inference: openai
+  embeddings: openai
+  eval: ragas-inline
+
+provider_overrides:
+  ragas-inline:
+    embedding_model: "text-embedding-3-small"
+    ragas_config:
+      metric_params:
+        answer_relevancy:
+          embeddings_model: "text-embedding-3-small"
+        faithfulness:
+          llm_model: "gpt-4o-mini"
+----
+
+== Development Configuration
+
+=== Debug Mode
+
+Enable detailed logging and debugging:
+
+[source,yaml]
+----
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    # Debug settings
+    debug: true
+    log_level: "DEBUG"
+    trace_requests: true
+    save_intermediate_results: true
+    
+    # Development helpers
+    fail_fast: true              # Stop on first error
+    validate_inputs: true        # Strict input validation
+    profile_performance: true    # Enable performance profiling
+----
+
+=== Testing Configuration
+
+Optimized for running tests:
+
+[source,yaml]
+----
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    # Fast execution for tests
+    batch_size: 5
+    timeout: 60
+    max_retries: 1
+    
+    # Minimal metrics for speed
+    metrics:
+      - answer_relevancy
+    
+    # Test-specific settings
+    deterministic: true          # Consistent results
+    seed: 42                    # Random seed
+----
+
+== Performance Optimization
+
+=== CPU Optimization
+
+[source,yaml]
+----
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    # CPU-optimized settings
+    batch_size: 32                    # Larger batches
+    max_concurrent_requests: 8        # More parallel requests
+    cpu_optimization: true           # Use CPU-optimized models
+    
+    # Threading settings
+    num_threads: 4                   # Embedding computation threads
+    inference_threads: 2             # LLM inference threads
+----
+
+=== Memory Optimization
+
+[source,yaml]
+----
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    # Memory-optimized settings
+    batch_size: 8                    # Smaller batches
+    clear_cache_after_batch: true    # Clear cache frequently
+    max_memory_usage: "2GB"          # Memory limit
+    
+    # Lazy loading
+    lazy_load_models: true           # Load models on demand
+    unload_unused_models: true       # Unload when not needed
+----
+
+== Monitoring and Logging
+
+=== Structured Logging
+
+[source,yaml]
+----
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    logging:
+      format: "json"                 # Structured JSON logs
+      level: "INFO"
+      include_metrics: true          # Log metric values
+      include_timing: true           # Log execution times
+      
+      # Log destinations
+      file: "/var/log/ragas-inline.log"
+      console: true
+----
+
+=== Metrics Collection
+
+[source,yaml]
+----
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    metrics_collection:
+      enabled: true
+      endpoint: "http://prometheus:9090"
+      
+      # Custom metrics
+      track_eval_duration: true
+      track_memory_usage: true
+      track_error_rates: true
+----
+
+== Error Handling
+
+=== Retry Configuration
+
+[source,yaml]
+----
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    retry_config:
+      max_retries: 3
+      retry_delay: 1.0
+      exponential_backoff: true
+      max_retry_delay: 30.0
+      
+      # Retry conditions
+      retry_on_timeout: true
+      retry_on_rate_limit: true
+      retry_on_server_error: true
+----
+
+=== Fallback Strategies
+
+[source,yaml]
+----
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    fallback:
+      # Model fallbacks
+      embedding_fallback_model: "all-MiniLM-L12-v2"
+      llm_fallback_model: "llama-3-70b-instruct"
+      
+      # Metric fallbacks
+      skip_failed_metrics: true
+      partial_results: true          # Return partial results on failure
+----
+
+== Validation and Testing
+
+=== Configuration Validation
+
+Test your inline provider configuration:
+
+[source,bash]
+----
+# Validate configuration syntax
+uv run python -c "
+from llama_stack_provider_ragas.config import RagasProviderInlineConfig
+import yaml
+
+with open('providers.d/inline/eval/ragas.yaml') as f:
+    config_data = yaml.safe_load(f)
+
+config = RagasProviderInlineConfig(**config_data['config'])
+print('Configuration is valid')
+"
+----
+
+=== End-to-End Testing
+
+[source,bash]
+----
+# Start Llama Stack with inline provider
+dotenv run uv run llama stack run distribution/run.yaml &
+
+# Wait for startup
+sleep 10
+
+# Run a simple evaluation
+uv run python -c "
+from llama_stack_client import LlamaStackClient
+
+client = LlamaStackClient(base_url='http://localhost:8321')
+
+# Simple test evaluation
+job = client.eval.run_eval(
+    eval_candidate={'type': 'model', 'model': 'llama-3-8b'},
+    task_config={'name': 'ragas_test'}
+)
+
+print(f'Test job submitted: {job.job_id}')
+"
+----
+
+== Troubleshooting
+
+=== Common Issues
+
+**Out of memory errors**::
+Reduce batch size and enable memory optimizations:
++
+[source,yaml]
+----
+ragas_config:
+  batch_size: 4
+  clear_cache_after_batch: true
+  max_memory_usage: "1GB"
+----
+
+**Slow evaluation**::
+Increase batch size and concurrent requests:
++
+[source,yaml]
+----
+ragas_config:
+  batch_size: 16
+  max_concurrent_requests: 4
+----
+
+**Model loading errors**::
+Verify model availability:
++
+[source,bash]
+----
+curl http://localhost:8321/v1/models | jq '.[] | select(.model_type=="embedding")'
+----
+
+**Timeout errors**::
+Increase timeout values:
++
+[source,yaml]
+----
+ragas_config:
+  timeout: 1200  # 20 minutes
+  max_retries: 5
+----
+
+== Next Steps
+
+* xref:remote-provider.adoc[Compare with remote provider]
+* xref:examples.adoc[Try inline provider examples]
+* xref:api-reference.adoc[Review API reference]

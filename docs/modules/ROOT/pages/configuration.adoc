@@ -1,0 +1,385 @@
+= Configuration
+:description: Configuration guide for RAGAS providers
+:keywords: configuration, setup, providers
+
+This guide covers how to configure the RAGAS providers for different deployment scenarios.
+
+== Configuration Overview
+
+The RAGAS provider supports two main configuration approaches:
+
+* **Inline Provider**: For local, same-process evaluation
+* **Remote Provider**: For distributed evaluation via Kubeflow Pipelines
+
+Both providers share a common base configuration and extend it with specific settings.
+
+== Base Configuration
+
+All RAGAS providers inherit from a base configuration that includes:
+
+=== Embedding Model Configuration
+
+[source,yaml]
+----
+embedding_model: "all-MiniLM-L6-v2"
+----
+
+The embedding model must match an identifier configured in your Llama Stack server. This model is used for:
+
+* Computing embeddings for RAGAS metrics that require semantic similarity
+* Processing retrieved contexts in RAG evaluations
+* Generating reference embeddings for comparison
+
+=== RAGAS Configuration
+
+[source,yaml]
+----
+ragas_config:
+  # Additional RAGAS-specific parameters
+  max_retries: 3
+  timeout: 300
+  batch_size: 10
+----
+
+== Inline Provider Configuration
+
+The inline provider runs RAGAS evaluations within the Llama Stack server process.
+
+=== Basic Configuration
+
+[source,yaml]
+----
+# providers.d/inline/eval/ragas.yaml
+provider_type: inline
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    max_retries: 3
+    timeout: 300
+----
+
+=== Distribution Integration
+
+To include the inline provider in a Llama Stack distribution:
+
+[source,yaml]
+----
+# distribution/run.yaml
+image_name: llamastack/distribution-meta-reference-gpu
+providers:
+  inference: ollama
+  memory: meta-reference
+  eval: ragas-inline  # Reference to inline provider
+  # ... other providers
+
+provider_overrides:
+  ragas-inline:
+    embedding_model: "all-MiniLM-L6-v2"
+----
+
+=== Advanced Inline Configuration
+
+[source,yaml]
+----
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  ragas_config:
+    # Evaluation parameters
+    max_retries: 5
+    timeout: 600
+    batch_size: 20
+    
+    # Metric-specific settings
+    answer_relevancy:
+      strictness: 3
+    context_precision:
+      strictness: 3
+    faithfulness:
+      strictness: 3
+----
+
+== Remote Provider Configuration
+
+The remote provider executes evaluations as Kubeflow Pipeline jobs.
+
+=== Basic Configuration
+
+[source,yaml]
+----
+# providers.d/remote/eval/ragas.yaml
+provider_type: remote
+config:
+  embedding_model: "all-MiniLM-L6-v2"
+  kubeflow_config:
+    pipelines_endpoint: "https://kubeflow.example.com/pipeline"
+    namespace: "kubeflow-user-example-com"
+    llama_stack_url: "https://your-llama-stack.ngrok.app"
+    base_image: "quay.io/diegosquayorg/my-ragas-provider-image:latest"
+    results_s3_prefix: "s3://my-bucket/ragas-results/"
+    s3_credentials_secret_name: "s3-credentials"
+----
+
+=== Environment Variables
+
+For security, sensitive configuration can be provided via environment variables:
+
+[source,bash]
+----
+# .env file
+KUBEFLOW_PIPELINES_ENDPOINT=https://kubeflow.example.com/pipeline
+KUBEFLOW_NAMESPACE=kubeflow-user-example-com
+KUBEFLOW_LLAMA_STACK_URL=https://your-llama-stack.ngrok.app
+KUBEFLOW_BASE_IMAGE=quay.io/diegosquayorg/my-ragas-provider-image:latest
+KUBEFLOW_RESULTS_S3_PREFIX=s3://my-bucket/ragas-results/
+KUBEFLOW_S3_CREDENTIALS_SECRET_NAME=s3-credentials
+----
+
+=== Kubeflow Configuration Details
+
+**pipelines_endpoint**:: The Kubeflow Pipelines API endpoint URL. Get this via:
++
+[source,bash]
+----
+kubectl get routes -A | grep -i pipeline
+----
+
+**namespace**:: The Kubernetes namespace where pipelines will run. This should be your data science project namespace.
+
+**llama_stack_url**:: URL of your Llama Stack server accessible from Kubeflow pods. For local development, use https://ngrok.com/[ngrok^] to expose your local server.
+
+**base_image**:: Container image with RAGAS provider dependencies. You can:
+* Use the public image: `quay.io/diegosquayorg/my-ragas-provider-image:latest`
+* Build your own using the provided `Containerfile`
+
+**results_s3_prefix**:: S3 prefix (folder) where evaluation results will be stored.
+
+**s3_credentials_secret_name**:: Name of the Kubernetes secret containing AWS credentials with write access to the results S3 bucket.
+
+== Advanced Configuration
+
+=== Custom Metrics Configuration
+
+Configure specific RAGAS metrics:
+
+[source,yaml]
+----
+ragas_config:
+  metrics:
+    - answer_relevancy
+    - context_precision 
+    - context_recall
+    - faithfulness
+    - answer_similarity
+    - answer_correctness
+  
+  metric_params:
+    answer_relevancy:
+      strictness: 3
+      embeddings_model: "all-MiniLM-L6-v2"
+    faithfulness:
+      strictness: 3
+    context_precision:
+      strictness: 3
+----
+
+=== Resource Configuration (Remote Only)
+
+Configure Kubernetes resource limits:
+
+[source,yaml]
+----
+kubeflow_config:
+  # ... other settings
+  resources:
+    requests:
+      cpu: "1"
+      memory: "2Gi"
+    limits:
+      cpu: "4"
+      memory: "8Gi"
+  
+  # GPU configuration
+  gpu:
+    enabled: true
+    type: "nvidia.com/gpu"
+    count: 1
+----
+
+=== Storage Configuration
+
+Configure result storage options:
+
+[source,yaml]
+----
+kubeflow_config:
+  # ... other settings
+  storage:
+    # S3 configuration
+    s3:
+      endpoint: "s3.amazonaws.com"
+      region: "us-east-1"
+      ssl: true
+    
+    # Result retention
+    retention_days: 30
+    
+    # Compression
+    compress_results: true
+----
+
+== Security Configuration
+
+=== Authentication
+
+**Kubernetes Authentication:**
+
+[source,bash]
+----
+# Configure kubectl access
+kubectl config set-context kubeflow --namespace=your-namespace
+----
+
+**S3 Credentials:**
+
+Create a Kubernetes secret with AWS credentials:
+
+[source,bash]
+----
+kubectl create secret generic s3-credentials \
+  --from-literal=AWS_ACCESS_KEY_ID=your-access-key \
+  --from-literal=AWS_SECRET_ACCESS_KEY=your-secret-key \
+  --from-literal=AWS_DEFAULT_REGION=us-east-1
+----
+
+=== Network Security
+
+Configure network policies for secure communication:
+
+[source,yaml]
+----
+# Network policy example (apply to your cluster)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ragas-provider-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: ragas-evaluation
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443  # HTTPS
+    - protocol: TCP
+      port: 80   # HTTP
+----
+
+== Validation
+
+=== Configuration Validation
+
+Test your configuration:
+
+[source,bash]
+----
+# Validate inline provider
+uv run python -c "
+from llama_stack_provider_ragas.config import RagasProviderInlineConfig
+config = RagasProviderInlineConfig(embedding_model='all-MiniLM-L6-v2')
+print('Inline config valid')
+"
+
+# Validate remote provider
+uv run python -c "
+from llama_stack_provider_ragas.config import RagasProviderRemoteConfig, KubeflowConfig
+kubeflow_config = KubeflowConfig(
+    pipelines_endpoint='https://example.com',
+    namespace='default',
+    llama_stack_url='https://example.com',
+    base_image='example:latest',
+    results_s3_prefix='s3://bucket/',
+    s3_credentials_secret_name='secret'
+)
+config = RagasProviderRemoteConfig(
+    embedding_model='all-MiniLM-L6-v2',
+    kubeflow_config=kubeflow_config
+)
+print('Remote config valid')
+"
+----
+
+=== Connectivity Testing
+
+Test connectivity to required services:
+
+[source,bash]
+----
+# Test Kubeflow Pipelines access
+curl -f $KUBEFLOW_PIPELINES_ENDPOINT/apis/v1beta1/healthz
+
+# Test S3 access
+aws s3 ls $KUBEFLOW_RESULTS_S3_PREFIX
+
+# Test Llama Stack access
+curl -f $KUBEFLOW_LLAMA_STACK_URL/health
+----
+
+== Troubleshooting
+
+=== Common Configuration Issues
+
+**Invalid embedding model**::
+Ensure the embedding model is registered in your Llama Stack server:
++
+[source,bash]
+----
+curl http://localhost:8321/v1/models | jq '.[] | select(.model_type=="embedding")'
+----
+
+**Kubeflow connection failed**::
+Verify cluster access and endpoint:
++
+[source,bash]
+----
+kubectl cluster-info
+kubectl get routes -A | grep pipeline
+----
+
+**S3 permission denied**::
+Check AWS credentials and bucket permissions:
++
+[source,bash]
+----
+aws s3 ls $KUBEFLOW_RESULTS_S3_PREFIX --debug
+----
+
+**Base image pull failed**::
+Verify image exists and is accessible:
++
+[source,bash]
+----
+docker pull $KUBEFLOW_BASE_IMAGE
+----
+
+=== Debug Configuration
+
+Enable debug logging:
+
+[source,yaml]
+----
+ragas_config:
+  debug: true
+  log_level: "DEBUG"
+  trace_requests: true
+----
+
+== Next Steps
+
+* xref:inline-provider.adoc[Configure inline provider]
+* xref:remote-provider.adoc[Configure remote provider]  
+* xref:examples.adoc[Try configuration examples]
+* xref:api-reference.adoc[Review API reference]

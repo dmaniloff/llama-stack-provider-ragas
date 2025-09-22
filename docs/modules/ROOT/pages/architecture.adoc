@@ -1,0 +1,238 @@
+= Architecture
+:description: Architecture overview of the RAGAS provider for Llama Stack
+:keywords: architecture, design, components
+
+This page provides an overview of the RAGAS provider architecture and how it integrates with Llama Stack.
+
+== Overview
+
+The RAGAS provider implements the Llama Stack evaluation API, enabling RAGAS evaluation capabilities through a standardized interface. The provider is designed to be flexible and supports both inline and remote execution models.
+
+[plantuml,architecture-overview,svg]
+----
+@startuml
+!include <aws/common>
+!include <aws/ApplicationIntegration/APIGateway>
+
+package "Llama Stack" {
+  [Eval API] as EvalAPI
+  [Inference API] as InferenceAPI
+  [Embeddings API] as EmbeddingsAPI
+  [Dataset API] as DatasetAPI
+}
+
+package "RAGAS Provider" {
+  [Provider Interface] as ProviderInterface
+  [Inline Provider] as InlineProvider
+  [Remote Provider] as RemoteProvider
+}
+
+package "External Services" {
+  [Ollama] as Ollama
+  [Kubeflow Pipelines] as KFP
+  [S3 Storage] as S3
+}
+
+EvalAPI --> ProviderInterface
+ProviderInterface --> InlineProvider
+ProviderInterface --> RemoteProvider
+
+InlineProvider --> InferenceAPI
+InlineProvider --> EmbeddingsAPI
+InlineProvider --> DatasetAPI
+
+RemoteProvider --> KFP
+KFP --> S3
+KFP --> InferenceAPI
+
+Ollama --> InferenceAPI
+Ollama --> EmbeddingsAPI
+
+@enduml
+----
+
+== Components
+
+=== Core Components
+
+**Provider Interface**:: The main interface that implements the Llama Stack evaluation provider contract. It handles request routing, configuration management, and result aggregation.
+
+**Configuration System**:: Manages provider-specific configuration including model references, evaluation parameters, and execution environment settings.
+
+**Evaluation Engine**:: Orchestrates the RAGAS evaluation process, including data preparation, metric computation, and result formatting.
+
+=== Execution Models
+
+==== Inline Provider
+
+The inline provider executes RAGAS evaluations within the same process as the Llama Stack server.
+
+**Advantages:**
+
+* Simple setup and deployment
+* Lower latency for small evaluations
+* Direct access to Llama Stack APIs
+* Easier debugging and development
+
+**Use Cases:**
+
+* Development and testing
+* Small-scale evaluations
+* Proof of concept implementations
+* Single-machine deployments
+
+**Flow:**
+
+. Client submits evaluation request via Llama Stack API
+. Provider validates request and extracts evaluation data
+. RAGAS evaluation runs locally using configured models
+. Results are formatted and returned to client
+
+==== Remote Provider
+
+The remote provider executes RAGAS evaluations as distributed Kubeflow Pipeline jobs.
+
+**Advantages:**
+
+* Scalable for large evaluations
+* Isolated execution environment
+* Resource management and scheduling
+* Persistent result storage
+* Fault tolerance and retries
+
+**Use Cases:**
+
+* Production evaluations
+* Large-scale batch processing
+* Multi-tenant environments
+* Resource-constrained local environments
+
+**Flow:**
+
+. Client submits evaluation request via Llama Stack API
+. Provider creates Kubeflow Pipeline with evaluation parameters
+. Pipeline executes RAGAS evaluation in Kubernetes cluster
+. Results are stored in S3 and metadata returned to client
+
+== Integration Points
+
+=== Llama Stack APIs
+
+The provider integrates with several Llama Stack APIs:
+
+**Evaluation API**:: Primary interface for receiving evaluation requests and returning results.
+
+**Inference API**:: Used for LLM generation during RAGAS metric computation.
+
+**Embeddings API**:: Used for embedding generation required by certain RAGAS metrics.
+
+**Dataset API**:: Used for accessing evaluation datasets and storing results.
+
+=== External Dependencies
+
+**RAGAS Library**:: Core evaluation library providing metrics and evaluation framework.
+
+**Ollama** (optional):: Local LLM inference server for development and testing.
+
+**Kubeflow Pipelines** (remote only):: Workflow orchestration platform for distributed evaluation.
+
+**S3 Storage** (remote only):: Object storage for evaluation results and artifacts.
+
+== Data Flow
+
+=== Evaluation Request Processing
+
+[source,python]
+----
+# 1. Client submits evaluation request
+job = client.eval.run_eval(
+    eval_candidate={"type": "model", "model": "llama-3-8b"},
+    task_config={"name": "ragas_eval"}
+)
+
+# 2. Provider processes request
+# - Validates configuration
+# - Extracts evaluation data
+# - Determines execution strategy
+
+# 3. Evaluation execution
+# - Inline: Direct RAGAS evaluation
+# - Remote: Kubeflow Pipeline creation
+
+# 4. Result processing
+# - Format results according to Llama Stack schema
+# - Store artifacts if configured
+# - Return evaluation summary
+----
+
+=== Configuration Flow
+
+Configuration flows through multiple layers:
+
+. **Global Configuration**: Llama Stack distribution settings
+. **Provider Configuration**: Provider-specific settings (models, endpoints)
+. **Runtime Configuration**: Per-request evaluation parameters
+. **RAGAS Configuration**: Evaluation-specific settings (metrics, sampling)
+
+== Security Considerations
+
+=== Authentication
+
+* Provider uses Llama Stack's authentication framework
+* Remote provider requires Kubernetes cluster authentication
+* S3 access uses IAM roles or access keys
+
+=== Data Privacy
+
+* Evaluation data processed according to configured privacy settings
+* Remote execution can be configured for data locality requirements
+* Result storage encryption supported via S3 server-side encryption
+
+=== Network Security
+
+* All API communication over HTTPS in production
+* Kubernetes network policies can isolate pipeline execution
+* VPC configuration controls access to external services
+
+== Performance Considerations
+
+=== Scaling
+
+**Inline Provider:**
+* Limited by single-machine resources
+* CPU and memory usage scales with evaluation size
+* Suitable for up to moderate-scale evaluations
+
+**Remote Provider:**
+* Horizontally scalable via Kubernetes
+* Resource allocation per pipeline run
+* Suitable for large-scale evaluations
+
+=== Optimization
+
+* **Batch Processing**: Group multiple evaluations for efficiency
+* **Caching**: Cache model outputs and embeddings where appropriate
+* **Parallel Execution**: Run independent evaluations concurrently
+* **Resource Management**: Configure resource limits and requests
+
+== Monitoring and Observability
+
+=== Metrics
+
+* Evaluation job success/failure rates
+* Processing latency and throughput
+* Resource utilization (CPU, memory, GPU)
+* Error rates by provider type
+
+=== Logging
+
+* Structured logging with request correlation IDs
+* Debug logs for evaluation steps and decisions
+* Error logs with stack traces and context
+* Audit logs for security and compliance
+
+=== Tracing
+
+* Distributed tracing across Llama Stack and provider
+* Kubeflow Pipeline execution tracing
+* Model inference call tracing

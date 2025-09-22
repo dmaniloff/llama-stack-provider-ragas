@@ -1,0 +1,60 @@
+= Llama Stack Provider - RAGAS
+:description: Ragas evaluation as an out-of-tree Llama Stack provider
+:keywords: llama-stack, ragas, evaluation, provider
+:page-layout: home
+
+[.lead]
+This project implements https://github.com/explodinggradients/ragas[Ragas^] as an out-of-tree https://github.com/meta-llama/llama-stack[Llama Stack^] evaluation provider.
+
+== Features
+
+The goal is to provide all of Ragas' evaluation functionality over Llama Stack's eval API, while leveraging the Llama Stack's built-in APIs for inference (LLMs and embeddings), datasets, and benchmarks.
+
+There are two versions of the provider:
+
+* **Inline Provider**: runs the Ragas evaluation in the same process as the Llama Stack server
+* **Remote Provider**: runs the Ragas evaluation in a remote process, using Kubeflow Pipelines
+
+== Quick Start
+
+Get up and running with the RAGAS provider in minutes:
+
+[source,bash]
+----
+# Clone the repository
+git clone https://github.com/dmaniloff/llama-stack-provider-ragas.git
+cd llama-stack-provider-ragas
+
+# Set up virtual environment
+uv venv
+source .venv/bin/activate
+
+# Install with development dependencies
+uv pip install -e ".[dev]"
+
+# Run the Llama Stack server
+dotenv run uv run llama stack run distribution/run.yaml
+----
+
+== What's Next?
+
+* xref:getting-started.adoc[Follow the complete getting started guide]
+* xref:architecture.adoc[Learn about the architecture]
+* xref:configuration.adoc[Configure your provider]
+* xref:examples.adoc[Explore examples and tutorials]
+
+WARNING: This project is in early stages of development!
+
+== Prerequisites
+
+* Python 3.12+
+* https://docs.astral.sh/uv/[uv^] package manager
+* For remote provider: Running https://www.kubeflow.org/docs/components/pipelines[Kubeflow Pipelines^] server
+
+== Support
+
+Need help? Check out:
+
+* {url-repo}/issues[Issue tracker^]
+* {url-repo}/discussions[GitHub Discussions^]
+* xref:contributing.adoc[Contributing Guide]
