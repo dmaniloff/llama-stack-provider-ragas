@@ -1,0 +1,16 @@
+name: llama-stack-provider-ragas
+title: Llama Stack Provider - RAGAS
+version: '1.0'
+start_page: ROOT:index.adoc
+nav:
+  - modules/ROOT/nav.adoc
+asciidoc:
+  attributes:
+    source-language: python
+    page-pagination: true
+    hide-uri-scheme: true
+    sectanchors: true
+    sectlinks: true
+    linkattrs: true
+    icons: font
+    source-highlighter: highlight.js

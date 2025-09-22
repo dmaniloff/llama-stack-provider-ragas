@@ -1,0 +1,190 @@
+= Getting Started
+:description: Complete guide to set up and use the RAGAS provider
+:keywords: installation, setup, quickstart
+
+This guide will walk you through setting up and using the RAGAS provider for Llama Stack.
+
+== Prerequisites
+
+Before you begin, ensure you have:
+
+* Python 3.12 or later
+* https://docs.astral.sh/uv/[uv^] package manager
+* Git
+
+For the remote provider, you'll also need:
+
+* A running https://www.kubeflow.org/docs/components/pipelines[Kubeflow Pipelines^] server
+* Kubernetes cluster access
+* S3-compatible storage for results
+
+== Installation
+
+=== 1. Clone the Repository
+
+[source,bash]
+----
+git clone https://github.com/dmaniloff/llama-stack-provider-ragas.git
+cd llama-stack-provider-ragas
+----
+
+=== 2. Set Up Virtual Environment
+
+[source,bash]
+----
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+----
+
+=== 3. Install Dependencies
+
+Choose the installation option that matches your use case:
+
+[tabs]
+====
+Development::
++
+[source,bash]
+----
+# Installs all dependencies including dev tools and both providers
+uv pip install -e ".[dev]"
+----
+
+Distribution Only::
++
+[source,bash]
+----
+# For running the sample Llama Stack distribution
+uv pip install -e ".[distro]"
+----
+
+Remote Provider::
++
+[source,bash]
+----
+# For Kubeflow Pipelines remote execution
+uv pip install -e ".[remote]"
+----
+
+Basic::
++
+[source,bash]
+----
+# Minimal installation
+uv pip install -e .
+----
+====
+
+== Quick Start
+
+=== Option 1: Using the Distribution
+
+The easiest way to get started is with the included Llama Stack distribution:
+
+[source,bash]
+----
+# Run the Llama Stack server with RAGAS providers
+dotenv run uv run llama stack run distribution/run.yaml
+----
+
+This starts a Llama Stack server that includes:
+
+* Ollama for inference and embeddings
+* Both inline and remote RAGAS providers
+* Sample configurations
+
+=== Option 2: Inline Provider Setup
+
+For a simpler setup using the inline provider:
+
+. **Start your Llama Stack server** with the inline RAGAS provider configured
+. **Run evaluations** using the Llama Stack client
+
+Example Python code:
+
+[source,python]
+----
+from llama_stack_client import LlamaStackClient
+
+# Connect to your Llama Stack server
+client = LlamaStackClient(base_url="http://localhost:8321")
+
+# Create an evaluation job
+job = client.eval.run_eval(
+    eval_candidate={
+        "type": "model",
+        "model": "your-model-id",
+        "sampling_params": {"temperature": 0.1}
+    },
+    task_config={
+        "name": "ragas_eval",
+        "description": "RAGAS evaluation"
+    }
+)
+
+print(f"Job ID: {job.job_id}")
+----
+
+=== Option 3: Remote Provider Setup
+
+For distributed evaluation using Kubeflow Pipelines:
+
+. **Create a `.env` file** with your Kubeflow configuration:
++
+[source,bash]
+----
+KUBEFLOW_LLAMA_STACK_URL=https://your-llama-stack-url
+KUBEFLOW_PIPELINES_ENDPOINT=https://your-kfp-endpoint
+KUBEFLOW_NAMESPACE=your-namespace
+KUBEFLOW_BASE_IMAGE=quay.io/diegosquayorg/my-ragas-provider-image:latest
+KUBEFLOW_RESULTS_S3_PREFIX=s3://your-bucket/results/
+KUBEFLOW_S3_CREDENTIALS_SECRET_NAME=your-s3-secret
+----
+
+. **Configure the remote provider** in your Llama Stack distribution
+. **Submit evaluation jobs** that will run in Kubeflow Pipelines
+
+== Verification
+
+To verify your installation works:
+
+[source,bash]
+----
+# Run unit tests (excludes integration tests)
+uv run pytest tests/ -m "not integration_test"
+
+# Check code quality
+uv run pre-commit run --all-files
+----
+
+== Next Steps
+
+* xref:architecture.adoc[Learn about the architecture]
+* xref:configuration.adoc[Configure your providers]
+* xref:examples.adoc[Try the examples]
+* Explore the demo notebooks in the `demos/` directory
+
+== Troubleshooting
+
+=== Common Issues
+
+**UV not found**::
+Install uv using pip: `python -m pip install uv`
+
+**Dependencies conflict**::
+Clean and reinstall: `uv sync --extra dev`
+
+**Llama Stack connection failed**::
+Check that your Llama Stack server is running and accessible
+
+**Kubeflow authentication failed**::
+Verify your cluster access and namespace permissions
+
+=== Getting Help
+
+If you encounter issues:
+
+. Check existing {url-repo}/issues[issues^]
+. Search {url-repo}/discussions[discussions^]
+. Review the xref:configuration.adoc[configuration guide]
+. Create a new issue with detailed error information
