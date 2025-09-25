@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/dmmaniloff/llama-stack-provider-ragas/main/docs/_static/provider-logo.png" alt="Llama Stack Provider" height="120">
+  <img src="https://raw.githubusercontent.com/dmaniloff/llama-stack-provider-ragas/main/docs/_static/provider-logo.png" alt="Llama Stack Provider" height="120">
 </p>
 
 # Ragas as an External Provider for Llama Stack
