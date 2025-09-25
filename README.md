@@ -1,8 +1,11 @@
-# `trustyai-ragas` <br> Ragas as an Out-of-Tree Llama Stack Provider
+<p align="center">
+  <img src="https://raw.githubusercontent.com/dmmaniloff/llama-stack-provider-ragas/main/docs/_static/provider-logo.png" alt="Llama Stack Provider" height="120">
+</p>
+
+# Ragas as an External Provider for Llama Stack
 
 [![PyPI version](https://img.shields.io/pypi/v/llama_stack_provider_ragas.svg)](https://pypi.org/project/llama-stack-provider-ragas/)
 
-⚠️ Warning! This project is in early stages of development!
 
 ## About
 This repository implements [Ragas](https://github.com/explodinggradients/ragas) as an out-of-tree [Llama Stack](https://github.com/meta-llama/llama-stack) evaluation provider.
