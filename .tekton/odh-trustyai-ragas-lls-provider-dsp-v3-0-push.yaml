@@ -54,7 +54,7 @@ spec:
     - name: pathInRepo
       value: pipelines/multi-arch-container-build.yaml
   taskRunTemplate:
-    serviceAccountName: build-pipeline-llama-stack-provider-v3-0
+    serviceAccountName: build-pipeline-odh-trustyai-ragas-lls-provider-dsp-v3-0
   workspaces:
   - name: git-auth
     secret:
