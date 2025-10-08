@@ -31,7 +31,7 @@ spec:
     - version=v3.0
     - io.openshift.tags=odh-trustyai-ragas-lls-provider-dsp
   - name: output-image
-    value: quay.io/repository/rhoai/odh-trustyai-ragas-lls-provider-dsp-rhel9:{{target_branch}}
+    value: quay.io/rhoai/odh-trustyai-ragas-lls-provider-dsp-rhel9:{{target_branch}}
   - name: dockerfile
     value: Dockerfile.konflux
   - name: path-context
