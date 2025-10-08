@@ -12,7 +12,7 @@ metadata:
       == "rhoai-3.0"
       && ( !".tekton/**".pathChanged() || ".tekton/odh-trustyai-ragas-lls-provider-dsp-v2-25-push.yaml".pathChanged() )
   labels:
-    appstudio.openshift.io/application: "rhoai-v3-0"
+    appstudio.openshift.io/application: rhoai-v3-0
     appstudio.openshift.io/component: odh-trustyai-ragas-lls-provider-dsp-v3-0
     pipelines.appstudio.openshift.io/type: build
   name: odh-trustyai-ragas-lls-provider-dsp-v3-0-on-push
