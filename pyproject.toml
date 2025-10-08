@@ -1,16 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "llama-stack-provider-ragas"
-version = "0.1.0"
+version = "0.3.0"
 description = "Ragas evaluation as an out-of-tree Llama Stack provider"
 readme = "README.md"
 requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENCE"]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+]
+authors = [
+    {name = "Diego Maniloff", email = "dmanilof@redhat.com"},
+    {name = "Trusty AI Team"}
+]
+keywords = ["llama-stack", "ragas", "evaluation"]
 dependencies = [
-    "llama-stack==0.2.11",
+    "setuptools-scm",
+    "llama-stack==0.2.22",
+    "greenlet==3.2.4", # inline/files/localfs errors saying greenlet not found
     "ragas==0.3.0",
     "pandas==2.3.0",
     "pyarrow==20.0.0",
     "requests==2.32.4",
 ]
+
+[project.urls]
+homepage = "https://github.com/trustyai-explainability/llama-stack-provider-ragas"
+repository = "https://github.com/trustyai-explainability/llama-stack-provider-ragas"
 
 [project.optional-dependencies]
 remote = ["kfp>=2.5.0", "kfp-kubernetes>=2.0.0", "s3fs>=2024.12.0", "kubernetes>=30.0.0"]
