@@ -44,6 +44,8 @@ spec:
     - linux-m2xlarge/arm64
     - linux/ppc64le
     - linux/s390x
+  - name: hermetic
+    value: false
   pipelineRef:
     resolver: git
     params:
