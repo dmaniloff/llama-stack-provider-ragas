@@ -1,10 +1,5 @@
-import json
-
 from llama_stack.schema_utils import json_schema_type
-from pydantic import BaseModel, Field, computed_field, field_validator
-from ragas.metrics import Metric
-
-from .constants import METRIC_MAPPING
+from pydantic import BaseModel, Field
 
 
 class RagasConfig(BaseModel):
@@ -36,59 +31,34 @@ class RagasConfig(BaseModel):
 class RagasProviderBaseConfig(BaseModel):
     """Base configuration shared by inline and remote providers."""
 
-    model: str = Field(
-        default="granite3.3:2b",
-        description=(
-            "Model to use for evaluation. "
-            "Adding here for completeness, as it is already provided in the benchmark config's eval_candidate. "
-            "It must match the identifier of the model in Llama Stack."
-        ),
-    )
+    # Looking for the model?
+    # It's in the benchmark config's eval_candidate.
+    # You set it as part of the call to `client.eval.run_eval`.
 
-    sampling_params: dict = Field(
-        default={"temperature": 0.1, "max_tokens": 100},
-        description=(
-            "Sampling parameters for the model. "
-            "Also here for completeness, as it is already provided in the benchmark config's eval_candidate. "
-        ),
-    )
+    # Looking for the sampling params?
+    # It's in the benchmark config's eval_candidate.
+    # You set them as part of the call to `client.eval.run_eval`.
+
+    # Looking for the dataset?
+    # It's in the benchmark config's dataset_id.
+    # You set it as part of the call to `client.benchmarks.register` and
+    # `client.datasets.register`.
+
+    # Looking for the metrics?
+    # They're in the benchmark config's scoring_functions.
+    # You set them as part of the call to `client.benchmarks.register`.
 
     embedding_model: str = Field(
-        default="all-MiniLM-L6-v2",
         description=(
             "Embedding model for Ragas evaluation. "
-            "At the moment, this cannot be set in the benchmark config, so it must be set here. "
+            "At the moment, this cannot be set in Llama Stack's benchmark config. "
             "It must match the identifier of the embedding model in Llama Stack."
         ),
     )
 
-    metric_names: list[str] = Field(
-        default=[
-            "answer_relevancy",
-            "context_precision",
-            "faithfulness",
-            "context_recall",
-        ],
-        description="Metrics to use for evaluation",
-        alias="metrics",
-    )
-
-    @field_validator("metric_names", mode="before")
-    @classmethod
-    def parse_metrics(cls, v):
-        """Parse metrics from string if needed (for YAML env var substitution)."""
-        if isinstance(v, str):
-            return json.loads(v)
-        return v
-
-    @property
-    @computed_field(return_type=list[Metric])
-    def metric_functions(self) -> list[Metric]:
-        return [METRIC_MAPPING[metric] for metric in self.metric_names]
-
     ragas_config: RagasConfig = Field(
         default=RagasConfig(),
-        description="Additional configuration parameters for Ragas",
+        description="Additional configuration parameters for Ragas.",
     )
 
 
@@ -102,25 +72,50 @@ class RagasProviderRemoteConfig(RagasProviderBaseConfig):
     """Configuration for Ragas evaluation provider (remote execution)."""
 
     kubeflow_config: "KubeflowConfig" = Field(
-        description="Additional configuration parameters for remote execution",
+        description="Additional configuration parameters for remote execution.",
     )
 
 
 class KubeflowConfig(BaseModel):
     """Configuration for Kubeflow remote execution."""
 
+    results_s3_prefix: str = Field(
+        description="S3 prefix (folder) where the evaluation results will be written.",
+    )
+
+    s3_credentials_secret_name: str = Field(
+        description=(
+            "Name of the AWS credentials secret. "
+            "Must have write access to the results S3 prefix. "
+            "These credentials will be loaded as environment variables in the Kubeflow pipeline components."
+        ),
+    )
+
     pipelines_endpoint: str = Field(
-        description="Kubeflow Pipelines API endpoint URL (required for remote execution)",
+        description="Kubeflow Pipelines API endpoint URL.",
     )
 
     namespace: str = Field(
-        description="Kubeflow namespace for pipeline execution",
+        description="Kubeflow namespace for pipeline execution.",
     )
 
     llama_stack_url: str = Field(
-        description="Base URL for Llama Stack API (accessible from Kubeflow pods)",
+        description="Base URL for Llama Stack API (accessible from Kubeflow pods).",
     )
 
-    base_image: str = Field(
-        description="Base image for Kubeflow pipeline components",
+    base_image: str | None = Field(
+        description=(
+            "Base image for Kubeflow pipeline components. "
+            "If not provided via env var, the image name will be read from a ConfigMap specified in constants.py."
+            "NOTE: this field is accessed via env var, but is here for completeness."
+        ),
+        default=None,
+    )
+
+    pipelines_token: str | None = Field(
+        description=(
+            "Kubeflow Pipelines token with access to submit pipelines. "
+            "If not provided via env var, the token will be read from the local kubeconfig file."
+        ),
+        default=None,
     )

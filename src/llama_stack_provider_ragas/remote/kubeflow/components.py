@@ -1,13 +1,62 @@
+import logging
 import os
 from typing import List  # noqa
 
 from dotenv import load_dotenv
 from kfp import dsl
+from kubernetes import client
+from kubernetes.client.exceptions import ApiException
+
+from ...constants import (
+    DEFAULT_RAGAS_PROVIDER_IMAGE,
+    KUBEFLOW_CANDIDATE_NAMESPACES,
+    RAGAS_PROVIDER_IMAGE_CONFIGMAP_KEY,
+    RAGAS_PROVIDER_IMAGE_CONFIGMAP_NAME,
+)
+from .utils import _load_kube_config
 
 load_dotenv()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
-@dsl.component(base_image=os.environ["KUBEFLOW_BASE_IMAGE"])
+def get_base_image() -> str:
+    """Get base image from env, fallback to k8s ConfigMap, fallback to default image."""
+
+    if (base_image := os.environ.get("KUBEFLOW_BASE_IMAGE")) is not None:
+        return base_image
+
+    _load_kube_config()
+    api = client.CoreV1Api()
+
+    for candidate_namespace in KUBEFLOW_CANDIDATE_NAMESPACES:
+        try:
+            configmap = api.read_namespaced_config_map(
+                name=RAGAS_PROVIDER_IMAGE_CONFIGMAP_NAME,
+                namespace=candidate_namespace,
+            )
+
+            data: dict[str, str] | None = configmap.data
+            if data and RAGAS_PROVIDER_IMAGE_CONFIGMAP_KEY in data:
+                return data[RAGAS_PROVIDER_IMAGE_CONFIGMAP_KEY]
+        except ApiException as api_exc:
+            if api_exc.status == 404:
+                continue
+            else:
+                logger.warning(f"Warning: Could not read from ConfigMap: {api_exc}")
+        except Exception as e:
+            logger.warning(f"Warning: Could not read from ConfigMap: {e}")
+    else:
+        # None of the candidate namespaces had the required ConfigMap/key
+        logger.warning(
+            f"ConfigMap '{RAGAS_PROVIDER_IMAGE_CONFIGMAP_NAME}' with key "
+            f"'{RAGAS_PROVIDER_IMAGE_CONFIGMAP_KEY}' not found in any of the namespaces: "
+            f"{KUBEFLOW_CANDIDATE_NAMESPACES}. Returning default image."
+        )
+        return DEFAULT_RAGAS_PROVIDER_IMAGE
+
+
+@dsl.component(base_image=get_base_image())
 def retrieve_data_from_llama_stack(
     dataset_id: str,
     llama_stack_base_url: str,
@@ -23,7 +72,7 @@ def retrieve_data_from_llama_stack(
     df.to_json(output_dataset.path, orient="records", lines=True)
 
 
-@dsl.component(base_image=os.environ["KUBEFLOW_BASE_IMAGE"])
+@dsl.component(base_image=get_base_image())
 def run_ragas_evaluation(
     model: str,
     sampling_params: dict,
@@ -31,6 +80,7 @@ def run_ragas_evaluation(
     metrics: List[str],  # noqa
     llama_stack_base_url: str,
     input_dataset: dsl.Input[dsl.Dataset],
+    result_s3_location: str,
 ):
     import logging
 
@@ -41,12 +91,13 @@ def run_ragas_evaluation(
 
     from llama_stack_provider_ragas.constants import METRIC_MAPPING
     from llama_stack_provider_ragas.logging_utils import render_dataframe_as_table
-    from llama_stack_provider_ragas.wrappers_remote import (
+    from llama_stack_provider_ragas.remote.wrappers_remote import (
         LlamaStackRemoteEmbeddings,
         LlamaStackRemoteLLM,
     )
 
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
 
     llm = LlamaStackRemoteLLM(
         base_url=llama_stack_base_url,
@@ -77,5 +128,5 @@ def run_ragas_evaluation(
     table_output = render_dataframe_as_table(df_output, "Ragas Evaluation Results")
     logger.info(f"Ragas evaluation completed:\n{table_output}")
 
-    s3_location = "s3://public-rhods/ragas-evaluation-pipeline/results.jsonl"
-    df_output.to_json(s3_location, orient="records", lines=True)
+    logger.info(f"Saving results to {result_s3_location}")
+    df_output.to_json(result_s3_location, orient="records", lines=True)

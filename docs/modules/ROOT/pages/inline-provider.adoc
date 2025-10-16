@@ -1,0 +1,162 @@
+= Inline Provider
+:navtitle: Inline Provider
+
+== Overview
+
+The inline provider runs Ragas evaluation directly within the Llama Stack server process. This is the simplest deployment option and is ideal for development, testing, and lightweight production scenarios.
+
+== Architecture
+
+The inline provider architecture is straightforward, running everything within the Llama Stack server process:
+
+[mermaid]
+----
+graph TB
+    A[Client Request] --> B[Llama Stack Server]
+
+    subgraph LSS ["🟦 Llama Stack Server"]
+        style LSS stroke-dasharray: 5 5
+        B --> C[Inline Ragas Provider]
+        C --> D[RAGAS Engine]
+        D --> E[Direct Memory Processing]
+        E --> F[Results]
+        F --> B
+    end
+
+    B --> A
+----
+
+=== Components
+
+==== Llama Stack Server
+The main server process that handles all requests and coordinates between different providers.
+
+==== Inline Ragas Provider
+The provider implementation that handles RAGAS evaluation requests directly within the server process.
+
+==== RAGAS Engine
+The core RAGAS evaluation engine that runs the actual metrics calculations.
+
+==== Direct Memory Processing
+All data processing happens in memory within the same process, providing fast access but sharing resources.
+
+=== Process Flow
+
+1. **Request Reception**: Client requests are received by the Llama Stack server
+2. **Provider Selection**: Server routes evaluation requests to the inline RAGAS provider
+3. **Direct Processing**: Provider loads data and runs evaluation in the same process
+4. **Result Return**: Results are immediately available and returned to the client
+
+== Installation
+
+=== Prerequisites
+
+* Python 3.12 or later
+* https://docs.astral.sh/uv/[uv] package manager
+
+=== One-liner setup for the impatient
+
+- Running this command will start a Llama Stack server with the Ragas provider installed, and use the minimal distribution that is the `distribution` directory.
+- Note that we are asking for the `[distro]` dependency group (more info below).
+- Also note that, for this one-liner to work, you will need to have your environment variables set up (see <<_environment_variables>>).
+
+
+[,bash]
+----
+uv run --with llama-stack-provider-ragas[distro] llama stack run distribution/run-inline.yaml
+----
+
+=== Installing with uv
+
+To get started with uv, create a virtual environment and install from PyPI:
+
+[,bash]
+----
+uv venv --python=3.12
+source .venv/bin/activate
+uv pip install llama-stack-provider-ragas
+----
+
+=== Development setup
+
+If you're planning to contribute and make modifications to the code, ensure that you clone the repository and set it up as an editable install:
+
+[,bash]
+----
+git clone https://github.com/trustyai-explainability/llama-stack-provider-ragas
+cd llama-stack-provider-ragas
+uv pip install -e .
+----
+
+=== Optional dependencies for inline provider
+
+The package includes several optional dependency groups:
+
+[cols="1,3"]
+|===
+|Group |Description
+
+|`dev`
+|Development dependencies including testing tools, linting, and type checking
+
+|`distro`
+|Dependencies to use the provided minimal Llama Stack distribution under `distribution/`
+|===
+
+==== Installing with optional dependencies
+
+[,bash]
+----
+# For development (includes all dependencies)
+uv pip install -e ".[dev]"
+
+# For using the sample distribution
+uv pip install -e ".[distro]"
+
+# Base installation (inline provider only)
+uv pip install -e "."
+----
+
+== Configuration
+
+The inline provider requires minimal configuration beyond the standard Llama Stack setup.
+
+=== Environment Variables
+
+Create a `.env` file in the project root with:
+
+[,properties]
+----
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+----
+
+=== Distribution Configuration
+
+The repository includes a sample Llama Stack distribution configuration that uses Ollama as a provider for inference and embeddings.
+
+The inline provider is setup in the following lines of the `run-inline.yaml`:
+
+[,yaml]
+----
+eval:
+  - provider_id: trustyai_ragas
+    provider_type: inline::trustyai_ragas
+    module: llama_stack_provider_ragas.inline
+    config:
+      embedding_model: ${env.EMBEDDING_MODEL}
+----
+
+== Usage
+
+=== Starting the Server
+
+Start the Llama Stack server with the included distribution configuration:
+
+[,bash]
+----
+dotenv run uv run llama stack run distribution/run-inline.yaml
+----
+
+=== Example Usage
+
+The repository includes demonstration examples in the `demos/` directory showing how to use the provider.

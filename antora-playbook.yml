@@ -1,0 +1,27 @@
+site:
+  title: Ragas provider for Llama Stack
+  url: https://trustyai-explainability.github.io/llama-stack-provider-ragas
+  start_page: llama-stack-provider-ragas::index.adoc
+
+content:
+  sources:
+  - url: ./
+    branches: HEAD
+    start_path: docs
+
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+
+asciidoc:
+  attributes:
+    source-highlighter: highlight.js
+    page-pagination: true
+    hide-uri-scheme: true
+  extensions:
+  - '@asciidoctor/tabs'
+  - 'asciidoctor-kroki'
+
+output:
+  dir: ./docs-dist

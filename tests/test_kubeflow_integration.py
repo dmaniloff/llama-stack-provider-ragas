@@ -7,28 +7,14 @@ from typing import List  # noqa
 import kfp
 import pytest
 from kfp import dsl
+from ragas.metrics import answer_relevancy
 
-from llama_stack_provider_ragas.config import KubeflowConfig, RagasProviderRemoteConfig
-from llama_stack_provider_ragas.kubeflow.pipeline import ragas_evaluation_pipeline
+from llama_stack_provider_ragas.remote.kubeflow.pipeline import (
+    ragas_evaluation_pipeline,
+)
 
 # Mark all tests as integration tests
 pytestmark = pytest.mark.integration_test
-
-
-@pytest.fixture
-def remote_eval_config():
-    return RagasProviderRemoteConfig(
-        model="granite3.3:2b",
-        sampling_params={"temperature": 0.1, "max_tokens": 100},
-        embedding_model="all-MiniLM-L6-v2",
-        metric_names=["answer_relevancy"],
-        kubeflow_config=KubeflowConfig(
-            pipelines_endpoint=os.environ["KUBEFLOW_PIPELINES_ENDPOINT"],
-            namespace=os.environ["KUBEFLOW_NAMESPACE"],
-            llama_stack_url=os.environ["LLAMA_STACK_URL"],
-            base_image=os.environ["KUBEFLOW_BASE_IMAGE"],
-        ),
-    )
 
 
 @pytest.fixture
@@ -86,7 +72,7 @@ def run_fake_ragas_evaluation(
 
     from llama_stack_provider_ragas.constants import METRIC_MAPPING
     from llama_stack_provider_ragas.logging_utils import render_dataframe_as_table
-    from llama_stack_provider_ragas.wrappers_remote import (
+    from llama_stack_provider_ragas.remote.wrappers_remote import (
         LlamaStackRemoteEmbeddings,
         LlamaStackRemoteLLM,
     )
@@ -171,16 +157,24 @@ def test_pipeline_dummy_dataset_retrieval(kf_client, remote_eval_config):
     assert run_result.run_id is not None
 
 
-def test_pipeline_dummy_ragas_evaluation(kf_client, remote_eval_config):
+@pytest.mark.parametrize(
+    "metric_to_test",
+    [
+        pytest.param(m, id=m.name) for m in [answer_relevancy]
+    ],  # , context_precision, faithfulness, context_recall]
+)
+def test_pipeline_dummy_ragas_evaluation(
+    kf_client, remote_eval_config, model, sampling_params, metric_to_test
+):
     @dsl.pipeline()
     def pipeline_ragas_evaluation():
         test_dataset = retrieve_data_for_testing()
         run_fake_ragas_evaluation(
             input_dataset=test_dataset.output,
-            model=remote_eval_config.model,
-            sampling_params=remote_eval_config.sampling_params,
+            model=model,
+            sampling_params=sampling_params,
             embedding_model=remote_eval_config.embedding_model,
-            metrics=remote_eval_config.metric_names,
+            metrics=[metric_to_test.name],
             llama_stack_base_url=remote_eval_config.kubeflow_config.llama_stack_url,
         )
 
@@ -194,16 +188,29 @@ def test_pipeline_dummy_ragas_evaluation(kf_client, remote_eval_config):
     assert run_result.run_id is not None
 
 
-def test_full_pipeline(kf_client, remote_eval_config):
+@pytest.mark.parametrize(
+    "metric_to_test",
+    [
+        pytest.param(m, id=m.name) for m in [answer_relevancy]
+    ],  # , context_precision, faithfulness, context_recall]
+)
+def test_full_pipeline(
+    kf_client, remote_eval_config, metric_to_test, model, sampling_params
+):
+    embedding_model = remote_eval_config.embedding_model
+
     run_result = kf_client.create_run_from_pipeline_func(
         pipeline_func=ragas_evaluation_pipeline,
         namespace=remote_eval_config.kubeflow_config.namespace,
         arguments={
+            "model": model,
+            "dataset_id": "ragas_demo_dataset_remote",  # TODO: this will fail if the dataset does not exist
+            "sampling_params": sampling_params,
+            "embedding_model": embedding_model,
+            "metrics": [metric_to_test.name],
             "llama_stack_base_url": remote_eval_config.kubeflow_config.llama_stack_url,
-            "model": remote_eval_config.model,
-            "sampling_params": remote_eval_config.sampling_params,
-            "embedding_model": remote_eval_config.embedding_model,
-            "metrics": remote_eval_config.metric_names,
+            "s3_credentials_secret_name": remote_eval_config.kubeflow_config.s3_credentials_secret_name,
+            "result_s3_location": remote_eval_config.kubeflow_config.results_s3_prefix,
         },
         run_name="test-full-pipeline",
         experiment_name="ragas-provider-kf-tests",
