@@ -1,0 +1,26 @@
+= Ragas provider for Llama Stack
+:navtitle: Overview
+
+image::https://raw.githubusercontent.com/trustyai-explainability/llama-stack-provider-ragas/main/docs/_static/provider-logo.png[Llama Stack Provider,align=center,width=300]
+
+https://github.com/trustyai-explainability/llama-stack-provider-ragas[View on GitHub]
+
+== About
+
+This repository implements https://github.com/explodinggradients/ragas[Ragas] as an out-of-tree https://github.com/meta-llama/llama-stack[Llama Stack] evaluation provider.
+
+The goal is to provide all of Ragas' evaluation functionality over Llama Stack's eval API, while leveraging the Llama Stack's built-in APIs for inference (llms and embeddings), datasets, and benchmarks.
+
+== Two Providers
+
+There are two versions of the provider:
+
+* `remote`: runs the Ragas evaluation in a remote process, using Kubeflow Pipelines. This is the *default* when using the module-based import.
+* `inline`: runs the Ragas evaluation in the same process as the Llama Stack server.
+
+== Getting Started
+
+Choose your deployment mode:
+
+* xref:inline-provider.adoc[Inline Provider] - Simple setup for development and lightweight deployments
+* xref:remote-provider.adoc[Remote Provider] - Scalable production deployments with Kubeflow Pipelines

@@ -21,7 +21,8 @@ def unique_timestamp():
     ],  # , context_precision, faithfulness, context_recall]
 )
 def test_single_metric_evaluation(
-    inline_eval_config,
+    model,
+    sampling_params,
     lls_client,
     unique_timestamp,
     raw_evaluation_data,
@@ -40,7 +41,7 @@ def test_single_metric_evaluation(
         benchmark_id=benchmark_id,
         dataset_id=dataset_id,
         scoring_functions=[metric_to_test.name],
-        provider_id="trustyai_ragas_inline",
+        provider_id="trustyai_ragas",
     )
 
     job = lls_client.eval.run_eval(
@@ -48,8 +49,8 @@ def test_single_metric_evaluation(
         benchmark_config={
             "eval_candidate": {
                 "type": "model",
-                "model": inline_eval_config.model,
-                "sampling_params": inline_eval_config.sampling_params,
+                "model": model,
+                "sampling_params": sampling_params,
             },
             "scoring_params": {},
         },
