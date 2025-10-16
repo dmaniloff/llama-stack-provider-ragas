@@ -95,3 +95,7 @@ _build/
 
 # Local development notes
 notes.org
+
+# Documentation
+docs-dist/
+node_modules/
