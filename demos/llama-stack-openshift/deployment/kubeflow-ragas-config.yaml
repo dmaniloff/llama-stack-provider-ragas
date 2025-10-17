@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubeflow-ragas-config
+data:
+  EMBEDDING_MODEL: "all-MiniLM-L6-v2"
+  KUBEFLOW_LLAMA_STACK_URL: "<your-llama-stack-url>"
+  KUBEFLOW_PIPELINES_ENDPOINT: "<your-kfp-endpoint>"
+  KUBEFLOW_NAMESPACE: "<your-namespace>"
+  KUBEFLOW_BASE_IMAGE: "quay.io/diegosquayorg/my-ragas-provider-image:latest"
+  KUBEFLOW_RESULTS_S3_PREFIX: "s3://my-bucket/ragas-results"
+  KUBEFLOW_S3_CREDENTIALS_SECRET_NAME: "<secret-name>"

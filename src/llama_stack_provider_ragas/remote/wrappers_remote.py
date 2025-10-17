@@ -2,8 +2,9 @@ import logging
 
 from langchain_core.language_models.llms import Generation, LLMResult
 from langchain_core.prompt_values import PromptValue
-from llama_stack_client import AsyncLlamaStackClient, LlamaStackClient
-from llama_stack_client.types import CompletionResponse
+from llama_stack.apis.inference import SamplingParams, TopPSamplingStrategy
+from llama_stack_client import AsyncLlamaStackClient, LlamaStackClient, omit
+from llama_stack_client.types.completion_create_response import CompletionCreateResponse
 from llama_stack_client.types.create_embeddings_response import CreateEmbeddingsResponse
 from ragas.embeddings.base import BaseRagasEmbeddings
 from ragas.llms.base import BaseRagasLLM
@@ -95,7 +96,7 @@ class LlamaStackRemoteLLM(BaseRagasLLM):
         self,
         base_url: str,
         model_id: str,
-        sampling_params: dict | None = None,
+        sampling_params: SamplingParams | None = None,
         run_config: RunConfig | None = None,
         multiple_completion_supported: bool = True,
     ):
@@ -106,42 +107,7 @@ class LlamaStackRemoteLLM(BaseRagasLLM):
         self.sync_client = LlamaStackClient(base_url=base_url)
         self.async_client = AsyncLlamaStackClient(base_url=base_url)
         self.model_id = model_id
-        self.sampling_params = sampling_params or {}
-        self.enable_prompt_logging = True
-        self.prompt_counter = 0
-
-    def _estimate_tokens(self, text: str) -> int:
-        """Estimate token count for a given text."""
-        # Rough estimation: ~4 characters per token for English text
-        return len(text) // 4
-
-    def _log_prompt(self, prompt_text: str, prompt_type: str = "evaluation") -> None:
-        """Log prompt details if enabled."""
-        if not self.enable_prompt_logging:
-            return
-
-        self.prompt_counter += 1
-        estimated_tokens = self._estimate_tokens(prompt_text)
-
-        logger.info(f"=== RAGAS PROMPT #{self.prompt_counter} ({prompt_type}) ===")
-        logger.info(f"Estimated tokens: {estimated_tokens}")
-        logger.info(f"Character count: {len(prompt_text)}")
-        logger.info(f"Prompt preview: {prompt_text[:200]}...")
-        logger.info(f"Full prompt:\n{prompt_text}")
-        logger.info("=" * 50)
-
-    def _prepare_generation_params(
-        self, prompt: PromptValue, temperature: float | None = None
-    ) -> tuple[str, dict]:
-        """Prepare prompt text and sampling parameters for generation."""
-        prompt_text = prompt.to_string()
-        self._log_prompt(prompt_text)
-
-        sampling_params = self.sampling_params.copy()
-        if temperature is not None:
-            sampling_params["temperature"] = temperature
-
-        return prompt_text, sampling_params
+        self.sampling_params = sampling_params
 
     def _initialize_llm_output(self) -> dict:
         """Create initial LLM output structure."""
@@ -152,12 +118,14 @@ class LlamaStackRemoteLLM(BaseRagasLLM):
         }
 
     def _update_llm_output(
-        self, response: CompletionResponse, llm_output: dict
+        self, response: CompletionCreateResponse, llm_output: dict
     ) -> None:
         """Process completion response and update llm_output."""
+        choice = response.choices[0] if response.choices else None
         llama_stack_info = {
-            "stop_reason": response.stop_reason,
-            "content_length": len(response.content),
+            "stop_reason": choice.finish_reason if choice else None,
+            "content_length": len(choice.text) if choice else 0,
+            "has_logprobs": choice.logprobs is not None if choice else False,
         }
         llm_output["llama_stack_responses"].append(llama_stack_info)
 
@@ -171,21 +139,44 @@ class LlamaStackRemoteLLM(BaseRagasLLM):
     ) -> LLMResult:
         """Synchronous text generation using Llama Stack client."""
         try:
-            prompt_text, sampling_params = self._prepare_generation_params(
-                prompt, temperature
-            )
             generations = []
             llm_output = self._initialize_llm_output()
 
+            # sampling params for this generation should be set via the benchmark config
+            # we will ignore the temperature and stop params passed in here
             for _ in range(n):
-                response: CompletionResponse = self.sync_client.inference.completion(
-                    content=prompt_text,
-                    model_id=self.model_id,
-                    sampling_params=sampling_params if sampling_params else None,
+                response: CompletionCreateResponse = (
+                    self.sync_client.completions.create(
+                        model=self.model_id,
+                        prompt=prompt.to_string(),
+                        max_tokens=self.sampling_params.max_tokens
+                        if self.sampling_params
+                        else omit,
+                        temperature=self.sampling_params.strategy.temperature
+                        if self.sampling_params
+                        and isinstance(
+                            self.sampling_params.strategy, TopPSamplingStrategy
+                        )
+                        else omit,
+                        top_p=self.sampling_params.strategy.top_p
+                        if self.sampling_params
+                        and isinstance(
+                            self.sampling_params.strategy, TopPSamplingStrategy
+                        )
+                        else omit,
+                        stop=self.sampling_params.stop
+                        if self.sampling_params
+                        else omit,
+                    )
                 )
 
+                if not response.choices:
+                    logger.warning("Completion response returned no choices")
+
                 self._update_llm_output(response, llm_output)
-                generations.append(Generation(text=response.content))
+                choice = response.choices[0] if response.choices else None
+                text = choice.text if choice else ""
+                generations.append(Generation(text=text))
 
             return LLMResult(generations=[generations], llm_output=llm_output)
 
@@ -203,23 +194,44 @@ class LlamaStackRemoteLLM(BaseRagasLLM):
     ) -> LLMResult:
         """Asynchronous text generation using Llama Stack client."""
         try:
-            prompt_text, sampling_params = self._prepare_generation_params(
-                prompt, temperature
-            )
             generations = []
             llm_output = self._initialize_llm_output()
 
+            # sampling params for this generation should be set via the benchmark config
+            # we will ignore the temperature and stop params passed in here
             for _ in range(n):
-                response: CompletionResponse = (
-                    await self.async_client.inference.completion(
-                        content=prompt_text,
-                        model_id=self.model_id,
-                        sampling_params=sampling_params if sampling_params else None,
+                response: CompletionCreateResponse = (
+                    await self.async_client.completions.create(
+                        model=self.model_id,
+                        prompt=prompt.to_string(),
+                        max_tokens=self.sampling_params.max_tokens
+                        if self.sampling_params
+                        else omit,
+                        temperature=self.sampling_params.strategy.temperature
+                        if self.sampling_params
+                        and isinstance(
+                            self.sampling_params.strategy, TopPSamplingStrategy
+                        )
+                        else omit,
+                        top_p=self.sampling_params.strategy.top_p
+                        if self.sampling_params
+                        and isinstance(
+                            self.sampling_params.strategy, TopPSamplingStrategy
+                        )
+                        else omit,
+                        stop=self.sampling_params.stop
+                        if self.sampling_params
+                        else omit,
                     )
                 )
 
+                if not response.choices:
+                    logger.warning("Completion response returned no choices")
+
                 self._update_llm_output(response, llm_output)
-                generations.append(Generation(text=response.content))
+                choice = response.choices[0] if response.choices else None
+                text = choice.text if choice else ""
+                generations.append(Generation(text=text))
 
             return LLMResult(generations=[generations], llm_output=llm_output)
 

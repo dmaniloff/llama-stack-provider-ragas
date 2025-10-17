@@ -201,9 +201,9 @@ The remote provider is setup in the following lines of the `run-remote.yaml`:
 [,yaml]
 ----
 eval:
-  - provider_id: trustyai_ragas
+  - provider_id: trustyai_ragas_remote
     provider_type: remote::trustyai_ragas
-    module: llama_stack_provider_ragas.remote # can also just be llama_stack_provider_ragas and it will default to remote
+    module: llama_stack_provider_ragas.remote
     config:
       embedding_model: ${env.EMBEDDING_MODEL}
       kubeflow_config:
@@ -213,7 +213,7 @@ eval:
         namespace: ${env.KUBEFLOW_NAMESPACE}
         llama_stack_url: ${env.KUBEFLOW_LLAMA_STACK_URL}
         base_image: ${env.KUBEFLOW_BASE_IMAGE}
-        pipelines_token: ${env.KUBEFLOW_PIPELINES_TOKEN:=}
+        pipelines_api_token: ${env.KUBEFLOW_PIPELINES_TOKEN:=}
 ----
 
 To run with the sample distribution:

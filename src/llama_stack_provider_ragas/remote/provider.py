@@ -4,12 +4,14 @@ from llama_stack.providers.datatypes import (
     RemoteProviderSpec,
 )
 
+from ..constants import PROVIDER_TYPE
+
 
 def get_provider_spec() -> ProviderSpec:
     return RemoteProviderSpec(
         api=Api.eval,
-        provider_type="remote::trustyai_ragas",
-        adapter_type="trustyai_ragas",
+        provider_type=f"remote::{PROVIDER_TYPE}",
+        adapter_type=PROVIDER_TYPE,
         module="llama_stack_provider_ragas.remote",
         pip_packages=[
             "ragas==0.3.0",

@@ -85,6 +85,7 @@ def run_ragas_evaluation(
     import logging
 
     import pandas as pd
+    from llama_stack.apis.inference import SamplingParams
     from ragas import EvaluationDataset, evaluate
     from ragas.dataset_schema import EvaluationResult
     from ragas.run_config import RunConfig
@@ -99,10 +100,14 @@ def run_ragas_evaluation(
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
+    # sampling_params is passed in from the benchmark config as model_dump()
+    # we need to convert it back to a SamplingParams object
+    sampling_params_obj = SamplingParams.model_validate(sampling_params)
+
     llm = LlamaStackRemoteLLM(
         base_url=llama_stack_base_url,
         model_id=model,
-        sampling_params=sampling_params,
+        sampling_params=sampling_params_obj,
     )
     embeddings = LlamaStackRemoteEmbeddings(
         base_url=llama_stack_base_url,

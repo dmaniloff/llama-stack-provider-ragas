@@ -1,7 +1,9 @@
 import os
+from datetime import datetime
 
 import pytest
 from dotenv import load_dotenv
+from llama_stack.apis.inference import SamplingParams, TopPSamplingStrategy
 from llama_stack_client import LlamaStackClient
 from ragas import EvaluationDataset
 
@@ -12,6 +14,11 @@ from llama_stack_provider_ragas.config import (
 )
 
 load_dotenv()
+
+
+@pytest.fixture
+def unique_timestamp():
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 @pytest.fixture
@@ -33,7 +40,11 @@ def embedding_model():
 
 @pytest.fixture
 def sampling_params():
-    return {"temperature": 0.1, "max_tokens": 100}
+    return SamplingParams(
+        strategy=TopPSamplingStrategy(temperature=0.1, top_p=0.95),
+        max_tokens=100,
+        stop=None,
+    )
 
 
 @pytest.fixture
