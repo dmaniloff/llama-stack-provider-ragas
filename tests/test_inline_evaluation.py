@@ -1,17 +1,12 @@
 """Integration tests for Ragas evaluation using Llama Stack eval API (inline)."""
 
-from datetime import datetime
-
 import pytest
 from ragas.metrics import answer_relevancy
 
+from llama_stack_provider_ragas.constants import PROVIDER_ID_INLINE
+
 # mark as integration, see tool.pytest.ini_options in pyproject.toml
 pytestmark = pytest.mark.integration_test
-
-
-@pytest.fixture
-def unique_timestamp():
-    return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 @pytest.mark.parametrize(
@@ -41,7 +36,7 @@ def test_single_metric_evaluation(
         benchmark_id=benchmark_id,
         dataset_id=dataset_id,
         scoring_functions=[metric_to_test.name],
-        provider_id="trustyai_ragas",
+        provider_id=PROVIDER_ID_INLINE,
     )
 
     job = lls_client.eval.run_eval(
@@ -50,7 +45,7 @@ def test_single_metric_evaluation(
             "eval_candidate": {
                 "type": "model",
                 "model": model,
-                "sampling_params": sampling_params,
+                "sampling_params": sampling_params.model_dump(exclude_none=True),
             },
             "scoring_params": {},
         },

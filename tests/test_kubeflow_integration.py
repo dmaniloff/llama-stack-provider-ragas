@@ -172,7 +172,7 @@ def test_pipeline_dummy_ragas_evaluation(
         run_fake_ragas_evaluation(
             input_dataset=test_dataset.output,
             model=model,
-            sampling_params=sampling_params,
+            sampling_params=sampling_params.model_dump(exclude_none=True),
             embedding_model=remote_eval_config.embedding_model,
             metrics=[metric_to_test.name],
             llama_stack_base_url=remote_eval_config.kubeflow_config.llama_stack_url,
@@ -195,18 +195,31 @@ def test_pipeline_dummy_ragas_evaluation(
     ],  # , context_precision, faithfulness, context_recall]
 )
 def test_full_pipeline(
-    kf_client, remote_eval_config, metric_to_test, model, sampling_params
+    lls_client,
+    kf_client,
+    raw_evaluation_data,
+    remote_eval_config,
+    metric_to_test,
+    model,
+    sampling_params,
+    unique_timestamp,
 ):
-    embedding_model = remote_eval_config.embedding_model
+    dataset_id = f"test_ragas_dataset_remote_{unique_timestamp}"
+    lls_client.datasets.register(
+        dataset_id=dataset_id,
+        purpose="eval/question-answer",
+        source={"type": "rows", "rows": raw_evaluation_data},
+        metadata={"provider_id": "localfs"},
+    )
 
     run_result = kf_client.create_run_from_pipeline_func(
         pipeline_func=ragas_evaluation_pipeline,
         namespace=remote_eval_config.kubeflow_config.namespace,
         arguments={
             "model": model,
-            "dataset_id": "ragas_demo_dataset_remote",  # TODO: this will fail if the dataset does not exist
-            "sampling_params": sampling_params,
-            "embedding_model": embedding_model,
+            "dataset_id": dataset_id,
+            "sampling_params": sampling_params.model_dump(exclude_none=True),
+            "embedding_model": remote_eval_config.embedding_model,
             "metrics": [metric_to_test.name],
             "llama_stack_base_url": remote_eval_config.kubeflow_config.llama_stack_url,
             "s3_credentials_secret_name": remote_eval_config.kubeflow_config.s3_credentials_secret_name,

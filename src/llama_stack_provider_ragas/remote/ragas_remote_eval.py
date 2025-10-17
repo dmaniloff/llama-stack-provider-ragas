@@ -109,9 +109,11 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
         return self._kfp_client
 
     def _get_kfp_token(self) -> str:
-        if self.config.kubeflow_config.pipelines_token:
+        if self.config.kubeflow_config.pipelines_api_token:
             logger.info("Using KUBEFLOW_PIPELINES_TOKEN from config")
-            return self.config.kubeflow_config.pipelines_token
+            return str(
+                self.config.kubeflow_config.pipelines_api_token.get_secret_value()
+            )
 
         try:
             from .kubeflow.utils import _load_kube_config
@@ -179,18 +181,6 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
     async def _submit_to_kubeflow(self, job: RagasEvaluationJob) -> str:
         from .kubeflow.pipeline import ragas_evaluation_pipeline
 
-        # temperature = (
-        #     job.runtime_config.benchmark_config.sampling_params.temperature
-        #     if job.runtime_config.benchmark_config.sampling_params.strategy.type
-        #     == "top_p"
-        #     else None
-        # )
-
-        # sampling_params = {
-        #     "temperature": temperature,
-        #     "max_tokens": job.runtime_config.benchmark_config.sampling_params.max_tokens,
-        # }
-
         pipeline_args = {
             "dataset_id": job.runtime_config.benchmark.dataset_id,
             "llama_stack_base_url": job.runtime_config.kubeflow_config.llama_stack_url,
@@ -200,7 +190,9 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
                 else -1
             ),
             "model": job.runtime_config.benchmark_config.eval_candidate.model,
-            "sampling_params": job.runtime_config.benchmark_config.eval_candidate.sampling_params.model_dump(),
+            "sampling_params": job.runtime_config.benchmark_config.eval_candidate.sampling_params.model_dump(
+                exclude_none=True
+            ),
             "embedding_model": self.config.embedding_model,
             "metrics": job.runtime_config.benchmark.scoring_functions,
             "result_s3_location": job.result_s3_location,

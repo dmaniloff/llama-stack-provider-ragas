@@ -1463,7 +1463,7 @@ wheels = [
 
 [[package]]
 name = "llama-stack-provider-ragas"
-version = "0.3.5"
+version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "datasets" },
@@ -1519,7 +1519,7 @@ requires-dist = [
     { name = "kfp", marker = "extra == 'remote'", specifier = ">=2.5.0" },
     { name = "kfp-kubernetes", marker = "extra == 'remote'", specifier = ">=2.0.0" },
     { name = "kubernetes", marker = "extra == 'remote'", specifier = ">=30.0.0" },
-    { name = "llama-stack", specifier = "==0.2.23" },
+    { name = "llama-stack", specifier = ">=0.2.23" },
     { name = "llama-stack-provider-ragas", extras = ["distro"], marker = "extra == 'dev'" },
     { name = "llama-stack-provider-ragas", extras = ["remote"], marker = "extra == 'dev'" },
     { name = "mypy", marker = "extra == 'dev'" },

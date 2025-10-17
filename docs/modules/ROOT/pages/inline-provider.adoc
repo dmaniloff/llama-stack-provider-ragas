@@ -139,7 +139,7 @@ The inline provider is setup in the following lines of the `run-inline.yaml`:
 [,yaml]
 ----
 eval:
-  - provider_id: trustyai_ragas
+  - provider_id: trustyai_ragas_inline
     provider_type: inline::trustyai_ragas
     module: llama_stack_provider_ragas.inline
     config:

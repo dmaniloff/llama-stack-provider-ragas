@@ -14,8 +14,8 @@ This repository implements [Ragas](https://github.com/explodinggradients/ragas) 
 The goal is to provide all of Ragas' evaluation functionality over Llama Stack's eval API, while leveraging the Llama Stack's built-in APIs for inference (llms and embeddings), datasets, and benchmarks.
 
 There are two versions of the provider:
-- `inline`: runs the Ragas evaluation in the same process as the Llama Stack server.
-- `remote`: runs the Ragas evaluation in a remote process, using Kubeflow Pipelines.
+- `inline`: runs the Ragas evaluation in the same process as the Llama Stack server. This is always available with the base installation.
+- `remote`: runs the Ragas evaluation in a remote process, using Kubeflow Pipelines. Only available when remote dependencies are installed with `pip install llama-stack-provider-ragas[remote]`.
 
 ## Prerequisites
 - Python 3.12
@@ -41,12 +41,29 @@ There are two versions of the provider:
     ```
 - The sample LS distributions (one for inline and one for remote provider) is a simple LS distribution that uses Ollama for inference and embeddings. See the provider-specific sections below for setup and run commands.
 
-### Remote provider (default)
+### Inline provider (default with base installation)
+
+Create a `.env` file with the required environment variable:
+```bash
+EMBEDDING_MODEL=ollama/all-minilm:l6-v2
+```
+
+Run the server:
+```bash
+dotenv run uv run llama stack run distribution/run.yaml
+```
+
+### Remote provider (requires optional dependencies)
+
+First install the remote dependencies:
+```bash
+uv pip install -e ".[remote]"
+```
 
 Create a `.env` file with the following:
 ```bash
 # Required for both inline and remote
-EMBEDDING_MODEL=all-MiniLM-L6-v2
+EMBEDDING_MODEL=ollama/all-minilm:l6-v2
 
 # Required for remote provider
 KUBEFLOW_LLAMA_STACK_URL=<your-llama-stack-url>
@@ -75,22 +92,9 @@ Where:
 
 Run the server:
 ```bash
-dotenv run uv run llama stack run distribution/run-remote.yaml
+dotenv run uv run llama stack run distribution/run.yaml
 ```
 
-### Inline provider (need to specify `.inline` in the module name)
-
-Create a `.env` file with the required environment variable:
-```bash
-EMBEDDING_MODEL=all-MiniLM-L6-v2
-```
-
-Run the server:
-```bash
-dotenv run uv run llama stack run distribution/run-inline.yaml
-```
-
-You will notice that `run-inline.yaml` file has the module name as `llama_stack_provider_ragas.inline`, in order to specify the inline provider.
 
 ## Usage
 See the demos in the `demos` directory.

@@ -15,8 +15,8 @@ The goal is to provide all of Ragas' evaluation functionality over Llama Stack's
 
 There are two versions of the provider:
 
-* `remote`: runs the Ragas evaluation in a remote process, using Kubeflow Pipelines. This is the *default* when using the module-based import.
-* `inline`: runs the Ragas evaluation in the same process as the Llama Stack server.
+* `inline`: runs the Ragas evaluation in the same process as the Llama Stack server. This is always available with the base installation.
+* `remote`: runs the Ragas evaluation in a remote process, using Kubeflow Pipelines. Only available when remote dependencies are installed with `pip install llama-stack-provider-ragas[remote]`.
 
 == Getting Started
 

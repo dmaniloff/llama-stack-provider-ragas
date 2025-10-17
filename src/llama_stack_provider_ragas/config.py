@@ -1,5 +1,5 @@
 from llama_stack.schema_utils import json_schema_type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 class RagasConfig(BaseModel):
@@ -112,7 +112,7 @@ class KubeflowConfig(BaseModel):
         default=None,
     )
 
-    pipelines_token: str | None = Field(
+    pipelines_api_token: SecretStr | None = Field(
         description=(
             "Kubeflow Pipelines token with access to submit pipelines. "
             "If not provided via env var, the token will be read from the local kubeconfig file."
