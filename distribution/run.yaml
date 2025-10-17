@@ -1,53 +1,61 @@
 version: "2"
-image_name: trustyai_ragas_distro
+image_name: trustyai_ragas_distro_remote
 apis:
   - eval
   - inference
+  - files
+  - benchmarks
   - telemetry
   - datasetio
 providers:
   eval:
-    - provider_id: trustyai_ragas_inline
-      provider_type: inline::trustyai_ragas
-      config:
-        metrics: ["answer_relevancy"]
-    - provider_id: trustyai_ragas_remote
+    - provider_id: ${env.KUBEFLOW_LLAMA_STACK_URL:+trustyai_ragas_remote}
       provider_type: remote::trustyai_ragas
+      module: llama_stack_provider_ragas.remote
       config:
-        metrics: ["answer_relevancy"]
+        embedding_model: ${env.EMBEDDING_MODEL}
         kubeflow_config:
+          results_s3_prefix: ${env.KUBEFLOW_RESULTS_S3_PREFIX}
+          s3_credentials_secret_name: ${env.KUBEFLOW_S3_CREDENTIALS_SECRET_NAME}
           pipelines_endpoint: ${env.KUBEFLOW_PIPELINES_ENDPOINT}
           namespace: ${env.KUBEFLOW_NAMESPACE}
-          llama_stack_url: ${env.LLAMA_STACK_URL}
+          llama_stack_url: ${env.KUBEFLOW_LLAMA_STACK_URL}
           base_image: ${env.KUBEFLOW_BASE_IMAGE}
+          pipelines_api_token: ${env.KUBEFLOW_PIPELINES_TOKEN:=}
+    - provider_id: ${env.EMBEDDING_MODEL:+trustyai_ragas_inline}
+      provider_type: inline::trustyai_ragas
+      module: llama_stack_provider_ragas.inline
+      config:
+        embedding_model: ${env.EMBEDDING_MODEL}
   datasetio:
-    # TODO: add this
-    # - provider_id: huggingface
-    #   provider_type: remote::huggingface
-    #   config:
-    #     kvstore:
-    #       type: sqlite
-    #       namespace: null
-    #       db_path: ${env.SQLITE_STORE_DIR:~/.llama/distributions/together}/huggingface_datasetio.db
     - provider_id: localfs
       provider_type: inline::localfs
       config:
         kvstore:
           type: sqlite
           namespace: null
-          db_path: ${env.SQLITE_STORE_DIR:~/.llama/distributions/trustyai_ragas_distro}/localfs_datasetio.db
+          db_path: ${env.SQLITE_STORE_DIR:=~/.llama/distributions/trustyai_ragas_distro_remote}/localfs_datasetio.db
   inference:
     - provider_id: ollama
       provider_type: remote::ollama
       config:
-        url: ${env.OLLAMA_URL:http://localhost:11434}
+        url: ${env.OLLAMA_URL:=http://localhost:11434}
   telemetry:
     - provider_id: meta-reference
       provider_type: inline::meta-reference
       config:
-        service_name: ${env.OTEL_SERVICE_NAME:}
-      sinks: ${env.TELEMETRY_SINKS:console,sqlite}
-      sqlite_db_path: ${env.SQLITE_STORE_DIR:~/.llama/distributions/trustyai_ragas_distro}/trace_store.db
+        service_name: "${env.OTEL_SERVICE_NAME:=\u200B}"
+        sinks: ${env.TELEMETRY_SINKS:=console,sqlite}
+        sqlite_db_path: ${env.SQLITE_STORE_DIR:=~/.llama/distributions/trustyai_ragas_distro_remote}/trace_store.db
+        otel_exporter_otlp_endpoint: ${env.OTEL_EXPORTER_OTLP_ENDPOINT:=}
+  files:
+    - provider_id: meta-reference-files
+      provider_type: inline::localfs
+      config:
+        storage_dir: ${env.FILES_STORAGE_DIR:=~/.llama/distributions/trustyai_ragas_distro_remote/files}
+        metadata_store:
+          type: sqlite
+          db_path: ${env.METADATA_STORE_DB_PATH:=~/.llama/distributions/trustyai_ragas_distro_remote}/registry.db}
 models:
   - metadata:
       embedding_dimension: 384
@@ -63,4 +71,3 @@ models:
 server:
   host: localhost
   port: 8321
-external_providers_dir: ./providers.d

@@ -1,0 +1,249 @@
+= Remote Provider
+:navtitle: Remote Provider
+
+== Overview
+
+The remote provider runs Ragas evaluation in a separate Kubeflow Pipelines environment. This provides better isolation, scalability, and is ideal for production deployments.
+
+== Sequence Diagram
+
+[mermaid]
+----
+sequenceDiagram
+  autonumber
+  participant U as User
+
+  box Llama Stack
+    participant E as Router
+    participant C as Config (run.yaml)
+    participant P_remote as remote::trustyai_ragas
+  end
+
+  box Cloud
+    participant KF as Kubeflow Pipelines
+    participant S3 as S3 Storage
+  end
+
+  U->>E: Request evaluation
+  E->>C: Resolve provider selection
+  E->>P_remote: Submit job
+  P_remote->>KF: Launch pipeline
+  KF->>S3: Store artifacts (results_s3_prefix)
+  KF-->>P_remote: Job status + artifact refs
+  P_remote-->>E: Return results reference
+  E-->>U: Return evaluation outcome
+----
+
+== Installation
+
+=== Prerequisites
+
+* Python 3.12 or later
+* https://docs.astral.sh/uv/[uv] package manager
+* Kubernetes cluster with Kubeflow Pipelines installed
+* Access to the Kubeflow Pipelines API
+* Container registry access for custom images
+
+==== Kubeflow Pipelines Server
+
+Ensure you have a running Kubeflow Pipelines installation. You can verify access with:
+
+[,python]
+----
+import kfp
+client = kfp.Client(host='<your-kfp-endpoint>')
+print("Connection successful")
+----
+
+=== One-liner setup for the impatient
+
+- Running this command will start a Llama Stack server with the Ragas provider installed, and use the minimal distribution that is the `distribution` directory.
+- Note that we are asking for the `[remote,distro]` dependency groups (more info below).
+- Also note that, for this one-liner to work, you will need to have your environment variables set up (see <<_environment_variables>>).
+
+[,bash]
+----
+uv run --with llama-stack-provider-ragas[remote,distro] llama stack run distribution/run-remote.yaml
+----
+
+=== Installing with uv
+
+To get started with uv, create a virtual environment and install from PyPI:
+
+[,bash]
+----
+uv venv --python=3.12
+source .venv/bin/activate
+uv pip install llama-stack-provider-ragas
+----
+
+=== Development setup
+
+If you're planning to contribute and make modifications to the code, ensure that you clone the repository and set it up as an editable install:
+
+[,bash]
+----
+git clone https://github.com/trustyai-explainability/llama-stack-provider-ragas
+cd llama-stack-provider-ragas
+uv pip install -e .
+----
+
+=== Optional dependencies for remote provider
+
+The package includes several optional dependency groups:
+
+[cols="1,3"]
+|===
+|Group |Description
+
+|`dev`
+|Development dependencies including testing tools, linting, and type checking
+
+|`remote`
+|Dependencies for the Kubeflow Pipelines-enabled remote provider
+
+|`distro`
+|Dependencies to use the provided minimal Llama Stack distribution under `distribution/`
+|===
+
+==== Installing with optional dependencies
+
+[,bash]
+----
+# For development (includes all dependencies)
+uv pip install -e ".[dev]"
+
+# For remote provider (includes the KFP dependencies)
+uv pip install -e ".[remote]"
+
+# For using the sample distribution
+uv pip install -e ".[distro]"
+----
+
+== Configuration
+
+=== Environment Variables
+
+Create a `.env` file in the project root with the following variables:
+
+[,properties]
+----
+# Required for both inline and remote
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+
+# Llama Stack server URL for remote provider
+KUBEFLOW_LLAMA_STACK_URL=<your-llama-stack-url>
+
+# Kubeflow Pipelines endpoint
+KUBEFLOW_PIPELINES_ENDPOINT=<your-kfp-endpoint>
+
+# Kubernetes namespace for Kubeflow
+KUBEFLOW_NAMESPACE=<your-namespace>
+
+# Container image for remote execution
+KUBEFLOW_BASE_IMAGE=quay.io/diegosquayorg/my-ragas-provider-image:latest
+
+# Authentication token for Kubeflow Pipelines
+KUBEFLOW_PIPELINES_TOKEN=<your-pipelines-token>
+
+# S3 configuration for storing evaluation results
+KUBEFLOW_RESULTS_S3_PREFIX=s3://my-bucket/ragas-results
+KUBEFLOW_S3_CREDENTIALS_SECRET_NAME=<secret-name>
+----
+
+=== Environment Variable Details
+
+`EMBEDDING_MODEL`::
+The embedding model to use for RAGAS evaluation. This should match a model available in your Llama Stack configuration.
+
+`KUBEFLOW_LLAMA_STACK_URL`::
+The URL of the Llama Stack server that the remote provider will use for LLM generations and embeddings. If running Llama Stack locally, you can use https://ngrok.com/[ngrok] to expose it to the remote provider.
+
+`KUBEFLOW_PIPELINES_ENDPOINT`::
+The endpoint URL for your Kubeflow Pipelines server. You can get this by running:
++
+[,bash]
+----
+kubectl get routes -A | grep -i pipeline
+----
+
+`KUBEFLOW_NAMESPACE`::
+The name of the data science project where the Kubeflow Pipelines server is running.
+
+`KUBEFLOW_BASE_IMAGE`::
+The container image used to run the Ragas evaluation in the remote provider. See the `Containerfile` in the repository root for details on building a custom image.
+
+`KUBEFLOW_PIPELINES_TOKEN`::
+Kubeflow Pipelines token with access to submit pipelines. If not provided, the token will be read from the local kubeconfig file. This token is used to authenticate with the Kubeflow Pipelines API for pipeline submission and monitoring.
+
+`KUBEFLOW_RESULTS_S3_PREFIX`::
+The S3 location (bucket and prefix) where evaluation results will be stored. This should be a folder path, e.g., `s3://my-bucket/ragas-results`. The remote provider will write evaluation outputs to this location.
+
+`KUBEFLOW_S3_CREDENTIALS_SECRET_NAME`::
+The name of the Kubernetes secret containing AWS credentials with write access to the S3 bucket specified in `KUBEFLOW_RESULTS_S3_PREFIX`. This secret will be mounted as environment variables in the Kubeflow pipeline components.
++
+To create the secret:
++
+[,bash]
+----
+oc create secret generic <secret-name> \
+  --from-literal=AWS_ACCESS_KEY_ID=your-access-key \
+  --from-literal=AWS_SECRET_ACCESS_KEY=your-secret-key \
+  --from-literal=AWS_DEFAULT_REGION=us-east-1
+----
+
+=== Distribution Configuration
+
+The repository includes a sample Llama Stack distribution configuration that uses Ollama as a provider for inference and embeddings.
+
+The remote provider is setup in the following lines of the `run-remote.yaml`:
+
+[,yaml]
+----
+eval:
+  - provider_id: trustyai_ragas_remote
+    provider_type: remote::trustyai_ragas
+    module: llama_stack_provider_ragas.remote
+    config:
+      embedding_model: ${env.EMBEDDING_MODEL}
+      kubeflow_config:
+        results_s3_prefix: ${env.KUBEFLOW_RESULTS_S3_PREFIX}
+        s3_credentials_secret_name: ${env.KUBEFLOW_S3_CREDENTIALS_SECRET_NAME}
+        pipelines_endpoint: ${env.KUBEFLOW_PIPELINES_ENDPOINT}
+        namespace: ${env.KUBEFLOW_NAMESPACE}
+        llama_stack_url: ${env.KUBEFLOW_LLAMA_STACK_URL}
+        base_image: ${env.KUBEFLOW_BASE_IMAGE}
+        pipelines_api_token: ${env.KUBEFLOW_PIPELINES_TOKEN:=}
+----
+
+To run with the sample distribution:
+
+[,bash]
+----
+dotenv run uv run llama stack run distribution/run-remote.yaml
+----
+
+== Usage
+
+=== Starting the Server
+
+Start the Llama Stack server with the included distribution configuration:
+
+[,bash]
+----
+dotenv run uv run llama stack run distribution/run-remote.yaml
+----
+
+This will start a server with the remote Ragas evaluation provider available.
+
+=== Basic Evaluation Workflow
+
+1. **Prepare Your Data**: Ensure your evaluation data is in the format expected by Ragas and Llama Stack
+2. **Submit Evaluation**: Use the Llama Stack eval API to submit your evaluation request
+3. **Pipeline Execution**: Remote provider creates and executes Kubeflow Pipeline
+4. **Monitor Progress**: Track evaluation progress through Kubeflow APIs
+5. **Collect Results**: Results are automatically collected and returned
+
+=== Example Workflow
+
+The repository includes demonstration examples in the `demos/` directory showing how to use the remote provider.

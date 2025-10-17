@@ -1,7 +1,0 @@
-adapter:
-  adapter_type: trustyai_ragas
-  pip_packages: ["ragas==0.3.0", "kfp>=2.5.0"]
-  config_class: llama_stack_provider_ragas.config.RagasProviderRemoteConfig
-  module: llama_stack_provider_ragas
-api_dependencies: ["inference", "datasetio"]
-optional_api_dependencies: []

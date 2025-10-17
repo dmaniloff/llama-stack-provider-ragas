@@ -1,0 +1,18 @@
+{
+  "name": "llama-stack-provider-ragas-docs",
+  "version": "1.0.0",
+  "description": "Documentation dependencies for Llama Stack Provider - Ragas",
+  "private": true,
+  "scripts": {
+    "docs:build": "antora antora-playbook.yml",
+    "docs:preview": "antora antora-playbook.yml --to-dir preview",
+    "docs:serve": "npx http-server docs-dist -p 8080"
+  },
+  "devDependencies": {
+    "@antora/cli": "^3.1.7",
+    "@antora/site-generator": "^3.1.7",
+    "@asciidoctor/tabs": "^1.0.0-beta.6",
+    "asciidoctor-kroki": "^0.18.1",
+    "http-server": "^14.1.1"
+  }
+}

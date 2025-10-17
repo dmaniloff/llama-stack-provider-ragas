@@ -16,6 +16,8 @@ def ragas_evaluation_pipeline(
     embedding_model: str,
     metrics: List[str],  # noqa
     llama_stack_base_url: str,
+    s3_credentials_secret_name: str,
+    result_s3_location: str,
     num_examples: int = -1,
 ):
     # TODO: consider a step here to validate that:
@@ -33,10 +35,11 @@ def ragas_evaluation_pipeline(
         embedding_model=embedding_model,
         metrics=metrics,
         llama_stack_base_url=llama_stack_base_url,
+        result_s3_location=result_s3_location,
     )
     kubernetes.use_secret_as_env(
         ragas_result,
-        secret_name="aws-credentials",
+        secret_name=s3_credentials_secret_name,
         secret_key_to_env={
             "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
             "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",

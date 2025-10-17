@@ -1,0 +1,8 @@
+version: "1"
+rules:
+  - base: main
+    upstream: trustyai-explainability:main
+    mergeMethod: merge
+    mergeUnstable: false
+label: "bot/merge-upstream"
+conflictLabel: "merge-conflict"

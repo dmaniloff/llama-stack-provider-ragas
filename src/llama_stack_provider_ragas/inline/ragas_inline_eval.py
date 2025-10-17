@@ -22,10 +22,10 @@ from ragas.metrics import (
 )
 from ragas.run_config import RunConfig
 
-from .config import RagasProviderInlineConfig
-from .constants import METRIC_MAPPING
-from .errors import RagasEvaluationError
-from .logging_utils import render_dataframe_as_table
+from ..config import RagasProviderInlineConfig
+from ..constants import METRIC_MAPPING
+from ..errors import RagasEvaluationError
+from ..logging_utils import render_dataframe_as_table
 from .wrappers_inline import LlamaStackInlineEmbeddings, LlamaStackInlineLLM
 
 logger = logging.getLogger(__name__)

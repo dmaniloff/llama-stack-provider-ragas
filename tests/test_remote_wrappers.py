@@ -1,13 +1,7 @@
-import os
-
 import pytest
 from langchain_core.prompt_values import StringPromptValue
 
-from llama_stack_provider_ragas.config import (
-    KubeflowConfig,
-    RagasProviderRemoteConfig,
-)
-from llama_stack_provider_ragas.wrappers_remote import (
+from llama_stack_provider_ragas.remote.wrappers_remote import (
     LlamaStackRemoteEmbeddings,
     LlamaStackRemoteLLM,
 )
@@ -17,36 +11,20 @@ pytestmark = pytest.mark.integration_test
 
 
 @pytest.fixture
-def remote_eval_config():
-    return RagasProviderRemoteConfig(
-        model="granite3.3:2b",
-        sampling_params={"temperature": 0.1, "max_tokens": 100},
-        embedding_model="all-MiniLM-L6-v2",
-        metric_names=["answer_relevancy"],
-        kubeflow_config=KubeflowConfig(
-            pipelines_endpoint=os.environ["KUBEFLOW_PIPELINES_ENDPOINT"],
-            namespace=os.environ["KUBEFLOW_NAMESPACE"],
-            llama_stack_url=os.environ["LLAMA_STACK_URL"],
-            base_image=os.environ["KUBEFLOW_BASE_IMAGE"],
-        ),
-    )
-
-
-@pytest.fixture
-def lls_remote_embeddings(remote_eval_config):
+def lls_remote_embeddings(kubeflow_config, embedding_model):
     return LlamaStackRemoteEmbeddings(
-        base_url=remote_eval_config.kubeflow_config.llama_stack_url,
-        embedding_model_id=remote_eval_config.embedding_model,
+        base_url=kubeflow_config.llama_stack_url,
+        embedding_model_id=embedding_model,
     )
 
 
 @pytest.fixture
-def lls_remote_llm(remote_eval_config):
+def lls_remote_llm(kubeflow_config, model, sampling_params):
     """Remote LLM wrapper for evaluation."""
     return LlamaStackRemoteLLM(
-        base_url=remote_eval_config.kubeflow_config.llama_stack_url,
-        model_id=remote_eval_config.model,
-        sampling_params=remote_eval_config.sampling_params,
+        base_url=kubeflow_config.llama_stack_url,
+        model_id=model,
+        sampling_params=sampling_params,
     )
 
 
@@ -87,7 +65,6 @@ def test_remote_llm_sync(lls_remote_llm, remote_eval_config):
     assert len(result.generations[0][0].text) > 0
 
     assert hasattr(result, "llm_output")
-    assert result.llm_output["model_id"] == remote_eval_config.model
     assert result.llm_output["provider"] == "llama_stack_remote"
     assert len(result.llm_output["llama_stack_responses"]) == 1
 
@@ -104,6 +81,5 @@ async def test_remote_llm_async(lls_remote_llm, remote_eval_config):
     assert len(result.generations[0][0].text) > 0
 
     assert hasattr(result, "llm_output")
-    assert result.llm_output["model_id"] == remote_eval_config.model
     assert result.llm_output["provider"] == "llama_stack_remote"
     assert len(result.llm_output["llama_stack_responses"]) == 1
