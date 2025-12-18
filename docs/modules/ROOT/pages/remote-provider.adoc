@@ -140,8 +140,8 @@ KUBEFLOW_PIPELINES_ENDPOINT=<your-kfp-endpoint>
 # Kubernetes namespace for Kubeflow
 KUBEFLOW_NAMESPACE=<your-namespace>
 
-# Container image for remote execution
-KUBEFLOW_BASE_IMAGE=quay.io/diegosquayorg/my-ragas-provider-image:latest
+# Container base image for remote execution
+KUBEFLOW_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312:latest
 
 # Authentication token for Kubeflow Pipelines
 KUBEFLOW_PIPELINES_TOKEN=<your-pipelines-token>
@@ -171,7 +171,7 @@ kubectl get routes -A | grep -i pipeline
 The name of the data science project where the Kubeflow Pipelines server is running.
 
 `KUBEFLOW_BASE_IMAGE`::
-The container image used to run the Ragas evaluation in the remote provider. See the `Containerfile` in the repository root for details on building a custom image.
+The base container image used to run the Ragas evaluation in the remote provider. Defaults to `registry.access.redhat.com/ubi9/python-312:latest`. The Kubeflow Pipeline components will automatically install `llama-stack-provider-ragas[remote]` and its dependencies on top of this base image at runtime. This provides flexibility to use different base images for different environments while ensuring the latest package versions are always used.
 
 `KUBEFLOW_PIPELINES_TOKEN`::
 Kubeflow Pipelines token with access to submit pipelines. If not provided, the token will be read from the local kubeconfig file. This token is used to authenticate with the Kubeflow Pipelines API for pipeline submission and monitoring.
