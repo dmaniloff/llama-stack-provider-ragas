@@ -69,7 +69,7 @@ EMBEDDING_MODEL=ollama/all-minilm:l6-v2
 KUBEFLOW_LLAMA_STACK_URL=<your-llama-stack-url>
 KUBEFLOW_PIPELINES_ENDPOINT=<your-kfp-endpoint>
 KUBEFLOW_NAMESPACE=<your-namespace>
-KUBEFLOW_BASE_IMAGE=quay.io/diegosquayorg/my-ragas-provider-image:latest
+KUBEFLOW_BASE_IMAGE=registry.access.redhat.com/ubi9/python-312:latest
 KUBEFLOW_PIPELINES_TOKEN=<your-pipelines-token>
 KUBEFLOW_RESULTS_S3_PREFIX=s3://my-bucket/ragas-results
 KUBEFLOW_S3_CREDENTIALS_SECRET_NAME=<secret-name>
@@ -80,7 +80,7 @@ Where:
 - `KUBEFLOW_PIPELINES_ENDPOINT`: You can get this via `kubectl get routes -A | grep -i pipeline` on your Kubernetes cluster.
 - `KUBEFLOW_NAMESPACE`: The name of the data science project where the Kubeflow Pipelines server is running.
 - `KUBEFLOW_PIPELINES_TOKEN`: Kubeflow Pipelines token with access to submit pipelines. If not provided, the token will be read from the local kubeconfig file.
-- `KUBEFLOW_BASE_IMAGE`: The image used to run the Ragas evaluation in the remote provider. See `Containerfile` for details. There is a public version of this image at `quay.io/diegosquayorg/my-ragas-provider-image:latest`.
+- `KUBEFLOW_BASE_IMAGE`: The base container image used to run the Ragas evaluation in the remote provider. Defaults to `registry.access.redhat.com/ubi9/python-312:latest`. The KFP components will automatically install `llama-stack-provider-ragas[remote]` and its dependencies on top of this base image. You can override this by setting the environment variable to use a custom image.
 - `KUBEFLOW_RESULTS_S3_PREFIX`: S3 location (bucket and prefix folder) where evaluation results will be stored, e.g., `s3://my-bucket/ragas-results`.
 - `KUBEFLOW_S3_CREDENTIALS_SECRET_NAME`: Name of the Kubernetes secret containing AWS credentials with write access to the S3 bucket. Create with:
   ```bash

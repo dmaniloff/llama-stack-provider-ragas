@@ -56,7 +56,10 @@ def get_base_image() -> str:
         return DEFAULT_RAGAS_PROVIDER_IMAGE
 
 
-@dsl.component(base_image=get_base_image())
+@dsl.component(
+    base_image=get_base_image(),
+    packages_to_install=["llama-stack-provider-ragas[remote]"],
+)
 def retrieve_data_from_llama_stack(
     dataset_id: str,
     llama_stack_base_url: str,
@@ -72,7 +75,10 @@ def retrieve_data_from_llama_stack(
     df.to_json(output_dataset.path, orient="records", lines=True)
 
 
-@dsl.component(base_image=get_base_image())
+@dsl.component(
+    base_image=get_base_image(),
+    packages_to_install=["llama-stack-provider-ragas[remote]"],
+)
 def run_ragas_evaluation(
     model: str,
     sampling_params: dict,
