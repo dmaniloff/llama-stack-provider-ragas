@@ -1,5 +1,6 @@
 """Integration tests for Ragas evaluation using remote Llama Stack wrappers."""
 
+import json
 import logging
 
 import pytest
@@ -39,8 +40,9 @@ def remote_embeddings(kubeflow_config, embedding_model):
 
 
 def test_client_connection(lls_client):
-    models = lls_client.models.list()
-    assert models
+    identifiers = [model.identifier for model in lls_client.models.list()]
+    assert "vllm/nomic-ai/nomic-embed-text-v1.5" in identifiers
+    assert "vllm/meta-llama/Llama-3.1-8B-Instruct" in identifiers
 
 
 @pytest.mark.parametrize(
@@ -49,12 +51,27 @@ def test_client_connection(lls_client):
         pytest.param(m, id=m.name) for m in [answer_relevancy]
     ],  # , context_precision, faithfulness, context_recall]
 )
+@pytest.mark.parametrize(
+    "llm_payload",
+    [
+        # `answer_relevancy` expects the LLM to output a JSON payload with:
+        # - question: a question implied by the given answer
+        # - noncommittal: 0/1
+        json.dumps({"question": "What is the capital of France?", "noncommittal": 0})
+    ],
+    indirect=True,
+)
 def test_single_metric_evaluation(
     evaluation_dataset,
+    mocked_lls_client,
+    llm_payload,
     remote_llm,
     remote_embeddings,
     metric_to_test,
 ) -> None:
+    # For this test we only evaluate the first sample to keep it fast/deterministic.
+    evaluation_dataset = evaluation_dataset[:1]
+
     result: EvaluationResult = evaluate(
         dataset=evaluation_dataset,
         metrics=[metric_to_test],

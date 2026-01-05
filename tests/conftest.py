@@ -3,7 +3,16 @@ from datetime import datetime
 
 import pytest
 from dotenv import load_dotenv
-from llama_stack_client import LlamaStackClient
+from llama_stack_client import AsyncLlamaStackClient, LlamaStackClient
+from llama_stack_client.types.completion_create_response import (
+    Choice,
+    CompletionCreateResponse,
+)
+from llama_stack_client.types.create_embeddings_response import (
+    CreateEmbeddingsResponse,
+    Data,
+    Usage,
+)
 from ragas import EvaluationDataset
 
 from llama_stack_provider_ragas.compat import SamplingParams, TopPSamplingStrategy
@@ -23,9 +32,82 @@ def unique_timestamp():
 
 @pytest.fixture
 def lls_client():
-    return LlamaStackClient(
-        base_url=os.environ.get("KUBEFLOW_LLAMA_STACK_URL", "http://localhost:8321")
+    return LlamaStackClient(base_url=os.environ.get("KUBEFLOW_LLAMA_STACK_URL"))
+
+
+@pytest.fixture
+def llm_payload(request):
+    """Ability to customize the LLM response."""
+    if hasattr(request, "param"):
+        return request.param
+    else:
+        return "Hello, world!"
+
+
+@pytest.fixture
+def mocked_lls_client(monkeypatch, llm_payload):
+    import llama_stack_provider_ragas.remote.wrappers_remote as wrappers_remote
+
+    def _make_embeddings_response(n: int) -> CreateEmbeddingsResponse:
+        # return one embedding vector per input string
+        return CreateEmbeddingsResponse(
+            data=[
+                Data(embedding=[0.1, 0.2, 0.3], index=i, object="embedding")
+                for i in range(n)
+            ],
+            model="ollama/granite3.3:2b",
+            object="list",
+            usage=Usage(prompt_tokens=10, total_tokens=10),
+        )
+
+    def _make_completions_response(text: str) -> CompletionCreateResponse:
+        return CompletionCreateResponse(
+            id="cmpl-123",
+            created=1717000000,
+            choices=[Choice(index=0, text=text, finish_reason="stop")],
+            model="ollama/granite3.3:2b",
+            object="text_completion",
+        )
+
+    # Create real clients, but patch only the `.create()` methods we need.
+    base_url = os.environ.get("KUBEFLOW_LLAMA_STACK_URL")
+    sync_client = LlamaStackClient(base_url=base_url)
+    async_client = AsyncLlamaStackClient(base_url=base_url)
+
+    def _embeddings_create(*args, **kwargs):
+        embedding_input = kwargs.get("input")
+        if isinstance(embedding_input, list):
+            return _make_embeddings_response(len(embedding_input))
+        return _make_embeddings_response(1)
+
+    async def _async_embeddings_create(*args, **kwargs):
+        embedding_input = kwargs.get("input")
+        if isinstance(embedding_input, list):
+            return _make_embeddings_response(len(embedding_input))
+        return _make_embeddings_response(1)
+
+    def _completions_create(*args, **kwargs):
+        return _make_completions_response(llm_payload)
+
+    async def _async_completions_create(*args, **kwargs):
+        return _make_completions_response(llm_payload)
+
+    # Patch nested methods (avoids dotted-attribute monkeypatch issues on classes).
+    monkeypatch.setattr(sync_client.embeddings, "create", _embeddings_create)
+    monkeypatch.setattr(sync_client.completions, "create", _completions_create)
+    monkeypatch.setattr(async_client.embeddings, "create", _async_embeddings_create)
+    monkeypatch.setattr(async_client.completions, "create", _async_completions_create)
+
+    # Ensure wrappers use these pre-patched instances, while keeping the rest of the
+    # client behavior real (e.g., models.list()).
+    monkeypatch.setattr(
+        wrappers_remote, "LlamaStackClient", lambda *a, **k: sync_client
     )
+    monkeypatch.setattr(
+        wrappers_remote, "AsyncLlamaStackClient", lambda *a, **k: async_client
+    )
+
+    return sync_client
 
 
 @pytest.fixture

@@ -28,7 +28,7 @@ def lls_remote_llm(kubeflow_config, model, sampling_params):
     )
 
 
-def test_remote_embeddings_sync(lls_remote_embeddings):
+def test_remote_embeddings_sync(mocked_lls_client, lls_remote_embeddings):
     embeddings = lls_remote_embeddings.embed_query("Hello, world!")
     assert isinstance(embeddings, list)
     assert isinstance(embeddings[0], float)
@@ -40,7 +40,7 @@ def test_remote_embeddings_sync(lls_remote_embeddings):
 
 
 @pytest.mark.asyncio
-async def test_remote_embeddings_async(lls_remote_embeddings):
+async def test_remote_embeddings_async(mocked_lls_client, lls_remote_embeddings):
     embeddings = await lls_remote_embeddings.aembed_query("Hello, world!")
     assert isinstance(embeddings, list)
     assert isinstance(embeddings[0], float)
@@ -51,10 +51,10 @@ async def test_remote_embeddings_async(lls_remote_embeddings):
     assert isinstance(embeddings, list)
     assert isinstance(embeddings[0], list)
     assert isinstance(embeddings[0][0], float)
-    assert len(embeddings) == 2  # Two input texts
+    assert len(embeddings) == 2  # One embedding per input text
 
 
-def test_remote_llm_sync(lls_remote_llm, remote_eval_config):
+def test_remote_llm_sync(mocked_lls_client, lls_remote_llm):
     prompt = StringPromptValue(text="What is the capital of France?")
     result = lls_remote_llm.generate_text(prompt, n=1)
 
@@ -70,7 +70,7 @@ def test_remote_llm_sync(lls_remote_llm, remote_eval_config):
 
 
 @pytest.mark.asyncio
-async def test_remote_llm_async(lls_remote_llm, remote_eval_config):
+async def test_remote_llm_async(mocked_lls_client, lls_remote_llm):
     prompt = StringPromptValue(text="What is the capital of France?")
     result = await lls_remote_llm.agenerate_text(prompt, n=1)
 
