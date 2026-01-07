@@ -46,25 +46,23 @@ def test_client_connection(lls_client):
 
 
 @pytest.mark.parametrize(
-    "metric_to_test",
-    [
-        pytest.param(m, id=m.name) for m in [answer_relevancy]
-    ],  # , context_precision, faithfulness, context_recall]
-)
-@pytest.mark.parametrize(
-    "llm_payload",
+    "metric_to_test,mocked_llm_response",
     [
         # `answer_relevancy` expects the LLM to output a JSON payload with:
         # - question: a question implied by the given answer
         # - noncommittal: 0/1
-        json.dumps({"question": "What is the capital of France?", "noncommittal": 0})
+        pytest.param(
+            answer_relevancy,
+            json.dumps(
+                {"question": "What is the capital of France?", "noncommittal": 0}
+            ),
+            id="answer_relevancy",
+        ),
     ],
-    indirect=True,
+    indirect=["mocked_llm_response"],
 )
 def test_single_metric_evaluation(
     evaluation_dataset,
-    mocked_lls_client,
-    llm_payload,
     remote_llm,
     remote_embeddings,
     metric_to_test,

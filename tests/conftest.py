@@ -25,28 +25,53 @@ from llama_stack_provider_ragas.config import (
 load_dotenv()
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--no-mock-inference",
+        action="store_true",
+        help="Don't mock LLM inference (embeddings and completions)",
+    )
+
+
 @pytest.fixture
 def unique_timestamp():
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 @pytest.fixture
-def lls_client():
+def lls_client(request):
+    if request.config.getoption("--no-mock-inference") is True:
+        return request.getfixturevalue("real_lls_client")
+    else:
+        return request.getfixturevalue("mocked_lls_client")
+
+
+@pytest.fixture
+def real_lls_client():
     return LlamaStackClient(base_url=os.environ.get("KUBEFLOW_LLAMA_STACK_URL"))
 
 
-@pytest.fixture
-def llm_payload(request):
-    """Ability to customize the LLM response."""
-    if hasattr(request, "param"):
-        return request.param
-    else:
-        return "Hello, world!"
+@pytest.fixture(autouse=True)
+def mocked_llm_response(request):
+    return getattr(request, "param", "Hello, world!")
 
 
-@pytest.fixture
-def mocked_lls_client(monkeypatch, llm_payload):
-    import llama_stack_provider_ragas.remote.wrappers_remote as wrappers_remote
+@pytest.fixture(autouse=True)
+def mocked_lls_client(monkeypatch, request):
+    """
+    Mock LLM inference (embeddings and completions) by default,
+    unless --mock-inference=False is passed in the command line.
+
+    You can indirectly parametrize this fixture to customize completion text:
+
+        @pytest.mark.parametrize(
+            "mocked_llm_response",
+            ["Hello from mock!"],
+            indirect=True,
+        )
+    """
+    if request.config.getoption("--no-mock-inference") is True:
+        return
 
     def _make_embeddings_response(n: int) -> CreateEmbeddingsResponse:
         # return one embedding vector per input string
@@ -55,7 +80,7 @@ def mocked_lls_client(monkeypatch, llm_payload):
                 Data(embedding=[0.1, 0.2, 0.3], index=i, object="embedding")
                 for i in range(n)
             ],
-            model="ollama/granite3.3:2b",
+            model="mocked/model",
             object="list",
             usage=Usage(prompt_tokens=10, total_tokens=10),
         )
@@ -65,7 +90,7 @@ def mocked_lls_client(monkeypatch, llm_payload):
             id="cmpl-123",
             created=1717000000,
             choices=[Choice(index=0, text=text, finish_reason="stop")],
-            model="ollama/granite3.3:2b",
+            model="mocked/model",
             object="text_completion",
         )
 
@@ -73,6 +98,8 @@ def mocked_lls_client(monkeypatch, llm_payload):
     base_url = os.environ.get("KUBEFLOW_LLAMA_STACK_URL")
     sync_client = LlamaStackClient(base_url=base_url)
     async_client = AsyncLlamaStackClient(base_url=base_url)
+
+    completion_text = request.getfixturevalue("mocked_llm_response")
 
     def _embeddings_create(*args, **kwargs):
         embedding_input = kwargs.get("input")
@@ -87,10 +114,10 @@ def mocked_lls_client(monkeypatch, llm_payload):
         return _make_embeddings_response(1)
 
     def _completions_create(*args, **kwargs):
-        return _make_completions_response(llm_payload)
+        return _make_completions_response(completion_text)
 
     async def _async_completions_create(*args, **kwargs):
-        return _make_completions_response(llm_payload)
+        return _make_completions_response(completion_text)
 
     # Patch nested methods (avoids dotted-attribute monkeypatch issues on classes).
     monkeypatch.setattr(sync_client.embeddings, "create", _embeddings_create)
@@ -98,8 +125,9 @@ def mocked_lls_client(monkeypatch, llm_payload):
     monkeypatch.setattr(async_client.embeddings, "create", _async_embeddings_create)
     monkeypatch.setattr(async_client.completions, "create", _async_completions_create)
 
-    # Ensure wrappers use these pre-patched instances, while keeping the rest of the
-    # client behavior real (e.g., models.list()).
+    # Ensure wrappers use these pre-patched instances
+    from llama_stack_provider_ragas.remote import wrappers_remote
+
     monkeypatch.setattr(
         wrappers_remote, "LlamaStackClient", lambda *a, **k: sync_client
     )
