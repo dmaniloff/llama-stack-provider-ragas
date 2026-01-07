@@ -56,8 +56,14 @@ def mocked_llm_response(request):
     return getattr(request, "param", "Hello, world!")
 
 
-@pytest.fixture(autouse=True)
-def mocked_lls_client(monkeypatch, request):
+@pytest.fixture()
+def mocked_lls_client(mocked_lls_clients):
+    sync_client, _ = mocked_lls_clients
+    return sync_client
+
+
+@pytest.fixture()
+def mocked_lls_clients(monkeypatch, request):
     """
     Mock LLM inference (embeddings and completions) by default,
     unless --mock-inference=False is passed in the command line.
@@ -70,8 +76,12 @@ def mocked_lls_client(monkeypatch, request):
             indirect=True,
         )
     """
-    if request.config.getoption("--no-mock-inference") is True:
-        return
+    # Create real clients, but patch only the `.create()` methods we need.
+    base_url = os.environ.get("KUBEFLOW_LLAMA_STACK_URL")
+    sync_client = LlamaStackClient(base_url=base_url)
+    async_client = AsyncLlamaStackClient(base_url=base_url)
+
+    completion_text = request.getfixturevalue("mocked_llm_response")
 
     def _make_embeddings_response(n: int) -> CreateEmbeddingsResponse:
         # return one embedding vector per input string
@@ -93,13 +103,6 @@ def mocked_lls_client(monkeypatch, request):
             model="mocked/model",
             object="text_completion",
         )
-
-    # Create real clients, but patch only the `.create()` methods we need.
-    base_url = os.environ.get("KUBEFLOW_LLAMA_STACK_URL")
-    sync_client = LlamaStackClient(base_url=base_url)
-    async_client = AsyncLlamaStackClient(base_url=base_url)
-
-    completion_text = request.getfixturevalue("mocked_llm_response")
 
     def _embeddings_create(*args, **kwargs):
         embedding_input = kwargs.get("input")
@@ -125,17 +128,21 @@ def mocked_lls_client(monkeypatch, request):
     monkeypatch.setattr(async_client.embeddings, "create", _async_embeddings_create)
     monkeypatch.setattr(async_client.completions, "create", _async_completions_create)
 
-    # Ensure wrappers use these pre-patched instances
-    from llama_stack_provider_ragas.remote import wrappers_remote
+    return sync_client, async_client
 
-    monkeypatch.setattr(
-        wrappers_remote, "LlamaStackClient", lambda *a, **k: sync_client
-    )
-    monkeypatch.setattr(
-        wrappers_remote, "AsyncLlamaStackClient", lambda *a, **k: async_client
-    )
 
-    return sync_client
+@pytest.fixture(autouse=True)
+def patch_remote_wrappers(monkeypatch, mocked_lls_clients, request):
+    sync_client, async_client = mocked_lls_clients
+    if request.config.getoption("--no-mock-inference") is not True:
+        from llama_stack_provider_ragas.remote import wrappers_remote
+
+        monkeypatch.setattr(
+            wrappers_remote, "LlamaStackClient", lambda *a, **k: sync_client
+        )
+        monkeypatch.setattr(
+            wrappers_remote, "AsyncLlamaStackClient", lambda *a, **k: async_client
+        )
 
 
 @pytest.fixture
