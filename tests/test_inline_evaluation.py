@@ -1,4 +1,4 @@
-"""Library client-based tests for inline ragas evaluation using real llama-stack internals."""
+"""Test inline evaluation."""
 
 import json
 from types import SimpleNamespace
@@ -11,7 +11,7 @@ from ragas.metrics import answer_relevancy
 
 from llama_stack_provider_ragas.constants import PROVIDER_ID_INLINE
 
-pytestmark = pytest.mark.integration_test
+pytestmark = pytest.mark.lls_integration
 
 
 @pytest.fixture

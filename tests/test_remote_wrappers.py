@@ -1,3 +1,5 @@
+"""Test the remote wrappers for the Llama Stack client."""
+
 import json
 import logging
 
@@ -15,7 +17,7 @@ from llama_stack_provider_ragas.remote.wrappers_remote import (
 )
 
 logger = logging.getLogger(__name__)
-pytestmark = pytest.mark.integration_test
+pytestmark = pytest.mark.lls_integration
 
 
 @pytest.fixture

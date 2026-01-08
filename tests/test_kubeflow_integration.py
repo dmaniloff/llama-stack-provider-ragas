@@ -13,8 +13,7 @@ from llama_stack_provider_ragas.remote.kubeflow.pipeline import (
     ragas_evaluation_pipeline,
 )
 
-# Mark all tests as integration tests
-pytestmark = pytest.mark.integration_test
+pytestmark = pytest.mark.kfp_integration
 
 
 @pytest.fixture
