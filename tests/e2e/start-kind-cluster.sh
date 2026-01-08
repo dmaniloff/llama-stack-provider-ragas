@@ -24,7 +24,7 @@ fi
 # Check if kubectl is installed
 if ! command -v kubectl &> /dev/null; then
     echo "Error: kubectl is not installed. Please install it first:"
-    echo "  brew install kubectl  # on macOS" 
+    echo "  brew install kubectl  # on macOS"
     exit 1
 fi
 
