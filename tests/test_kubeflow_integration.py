@@ -9,10 +9,6 @@ import pytest
 from kfp import dsl
 from ragas.metrics import answer_relevancy
 
-from llama_stack_provider_ragas.remote.kubeflow.pipeline import (
-    ragas_evaluation_pipeline,
-)
-
 pytestmark = pytest.mark.kfp_integration
 
 
@@ -203,6 +199,10 @@ def test_full_pipeline(
     sampling_params,
     unique_timestamp,
 ):
+    from llama_stack_provider_ragas.remote.kubeflow.pipeline import (
+        ragas_evaluation_pipeline,
+    )
+
     dataset_id = f"test_ragas_dataset_remote_{unique_timestamp}"
     lls_client.datasets.register(
         dataset_id=dataset_id,
