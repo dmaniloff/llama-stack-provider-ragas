@@ -5,6 +5,7 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        args: [--allow-multiple-documents]
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: debug-statements
@@ -21,7 +22,7 @@ repos:
     hooks:
       - id: mypy
         args: [--ignore-missing-imports, --show-error-codes, --no-strict-optional]
-        additional_dependencies: [types-requests]
+        additional_dependencies: [types-requests, types-PyYAML]
 
   - repo: local
     hooks:
