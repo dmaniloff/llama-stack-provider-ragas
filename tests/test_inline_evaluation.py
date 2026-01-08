@@ -5,10 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 import yaml
-from llama_stack.apis.datatypes import Api
 from llama_stack.core.library_client import LlamaStackAsLibraryClient
 from ragas.metrics import answer_relevancy
 
+from llama_stack_provider_ragas.compat import Api
 from llama_stack_provider_ragas.constants import PROVIDER_ID_INLINE
 
 pytestmark = pytest.mark.lls_integration
