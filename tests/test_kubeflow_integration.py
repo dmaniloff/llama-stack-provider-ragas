@@ -4,8 +4,19 @@ import os
 from textwrap import dedent
 from typing import List  # noqa
 
-import kfp
 import pytest
+
+# Skip the entire module if required environment variables are missing
+required_env_vars = ["KUBEFLOW_PIPELINES_ENDPOINT", "KUBEFLOW_BASE_IMAGE"]
+missing_vars = [var for var in required_env_vars if not os.environ.get(var)]
+if missing_vars:
+    pytest.skip(
+        f"Kubeflow environment variables not set: {', '.join(missing_vars)}. "
+        "Set these environment variables to run Kubeflow integration tests.",
+        allow_module_level=True,
+    )
+
+import kfp
 from kfp import dsl
 from ragas.metrics import answer_relevancy
 
