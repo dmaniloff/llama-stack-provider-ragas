@@ -158,10 +158,31 @@ def real_library_client(library_stack_config_file):
 @pytest.fixture()
 def mocked_library_client(
     monkeypatch,
-    real_library_client,
     mocked_llm_response,
+    library_stack_config_file,
 ):
     completion_text = mocked_llm_response
+
+    # Mock Ollama connectivity check & model listing
+    async def _fake_check_model_availability(*args, **kwargs):
+        return True
+
+    async def _fake_list_provider_model_ids(*args, **kwargs):
+        return ["all-minilm:latest", "granite3.3:2b"]
+
+    monkeypatch.setattr("ollama.Client", lambda *args, **kwargs: SimpleNamespace())
+
+    monkeypatch.setattr(
+        "llama_stack.providers.remote.inference.ollama.ollama.OllamaInferenceAdapter.check_model_availability",
+        _fake_check_model_availability,
+    )
+    monkeypatch.setattr(
+        "llama_stack.providers.remote.inference.ollama.ollama.OllamaInferenceAdapter.list_provider_model_ids",
+        _fake_list_provider_model_ids,
+    )
+
+    # Create the client after mocking
+    real_library_client = LlamaStackAsLibraryClient(str(library_stack_config_file))
 
     async def _fake_openai_embeddings(req):  # noqa: ANN001
         embedding_input = getattr(req, "input", None)
