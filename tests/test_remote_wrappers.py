@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 
 import pytest
 from langchain_core.prompt_values import StringPromptValue
@@ -21,18 +22,18 @@ pytestmark = pytest.mark.lls_integration
 
 
 @pytest.fixture
-def lls_remote_embeddings(kubeflow_config, embedding_model):
+def lls_remote_embeddings(embedding_model):
     return LlamaStackRemoteEmbeddings(
-        base_url=kubeflow_config.llama_stack_url,
+        base_url=os.environ.get("KUBEFLOW_LLAMA_STACK_URL"),
         embedding_model_id=embedding_model,
     )
 
 
 @pytest.fixture
-def lls_remote_llm(kubeflow_config, model, sampling_params):
+def lls_remote_llm(model, sampling_params):
     """Remote LLM wrapper for evaluation."""
     return LlamaStackRemoteLLM(
-        base_url=kubeflow_config.llama_stack_url,
+        base_url=os.environ.get("KUBEFLOW_LLAMA_STACK_URL"),
         model_id=model,
         sampling_params=sampling_params,
     )
