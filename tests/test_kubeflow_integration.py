@@ -4,7 +4,13 @@ import os
 from textwrap import dedent
 from typing import List  # noqa
 
+import kfp
 import pytest
+from kfp import dsl
+from ragas.metrics import answer_relevancy
+
+pytestmark = pytest.mark.kfp_integration
+
 
 # Skip the entire module if required environment variables are missing
 required_env_vars = ["KUBEFLOW_PIPELINES_ENDPOINT", "KUBEFLOW_BASE_IMAGE"]
@@ -15,12 +21,6 @@ if missing_vars:
         "Set these environment variables to run Kubeflow integration tests.",
         allow_module_level=True,
     )
-
-import kfp
-from kfp import dsl
-from ragas.metrics import answer_relevancy
-
-pytestmark = pytest.mark.kfp_integration
 
 
 @pytest.fixture
