@@ -40,17 +40,10 @@ providers:
         namespace: datasetio::localfs
         backend: kv_default
   inference:
-    - provider_id: ${env.VLLM_URL:+vllm}
-      provider_type: remote::vllm
-      config:
-        url: ${env.VLLM_URL}
-        max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
-        api_token: ${env.VLLM_API_TOKEN:=fake}
-        tls_verify: ${env.VLLM_TLS_VERIFY:=true}
-    - provider_id: ${env.OLLAMA_URL:+ollama}
+    - provider_id: ollama
       provider_type: remote::ollama
       config:
-        url: ${env.OLLAMA_URL}
+        url: ${env.OLLAMA_URL:=http://localhost:11434}
   files:
   - provider_id: meta-reference-files
     provider_type: inline::localfs
@@ -92,17 +85,6 @@ registered_resources:
     provider_id: ollama
     provider_model_id: granite3.3:2b
     model_type: llm
-  - metadata: {}
-    model_id: llama-3.1-8b-instruct
-    provider_id: vllm
-    provider_model_id: meta-llama/Llama-3.1-8B-Instruct
-    model_type: llm
-  - metadata:
-      embedding_dimension: 1024
-    model_id: nomic-embed-text
-    provider_id: vllm
-    provider_model_id: nomic-ai/nomic-embed-text-v1.5
-    model_type: embedding
   shields: []
   vector_dbs: []
   datasets: []
