@@ -7,6 +7,8 @@ import pytest
 import yaml
 from llama_stack.core.library_client import LlamaStackAsLibraryClient
 from ragas.metrics import answer_relevancy
+from rich import print as rprint
+from rich.pretty import Pretty
 
 from llama_stack_provider_ragas.compat import Api
 from llama_stack_provider_ragas.constants import PROVIDER_ID_INLINE
@@ -223,15 +225,15 @@ def test_library_client_health(library_client):
     assert hasattr(library_client.alpha, "eval")
 
     models = library_client.models.list()
-    print(f"Available models: {[(m.identifier, m.model_type) for m in models]}")
     assert len(models) > 0
+    print("Available models:")
+    rprint(Pretty(models, max_depth=6, expand_all=True))
 
     providers = library_client.providers.list()
-    print(
-        f"Available providers: {[(p.provider_id, p.api, p.provider_type) for p in providers]}"
-    )
     assert len(providers) > 0
     assert any(p.api == "eval" for p in providers)
+    print("Available providers:")
+    rprint(Pretty(providers, max_depth=6, expand_all=True))
 
 
 @pytest.mark.parametrize(
