@@ -43,7 +43,7 @@ class RagasProviderBaseConfig(BaseModel):
     # Looking for the dataset?
     # It's in the benchmark config's dataset_id.
     # You set it as part of the call to `client.benchmarks.register` and
-    # `client.datasets.register`.
+    # `client.beta.datasets.register`.
 
     # Looking for the metrics?
     # They're in the benchmark config's scoring_functions.
