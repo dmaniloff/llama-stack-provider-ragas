@@ -59,7 +59,7 @@ jobs:
         uv run pre-commit run --show-diff-on-failure
 
   integration-tests:
-    name: Integration Tests
+    name: Tier 2 - Integration Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
