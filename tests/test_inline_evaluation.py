@@ -1,6 +1,7 @@
 """Test inline evaluation."""
 
 import json
+import random
 from types import SimpleNamespace
 
 import pytest
@@ -17,7 +18,7 @@ pytestmark = pytest.mark.lls_integration
 
 
 @pytest.fixture
-def library_stack_config(tmp_path):
+def library_stack_config(tmp_path, embedding_dimension):
     """Stack configuration for library client testing."""
     storage_dir = tmp_path / "test_storage"
     storage_dir.mkdir()
@@ -99,7 +100,7 @@ def library_stack_config(tmp_path):
         "registered_resources": {
             "models": [
                 {
-                    "metadata": {"embedding_dimension": 384},
+                    "metadata": {"embedding_dimension": embedding_dimension},
                     "model_id": "all-MiniLM-L6-v2",
                     "provider_id": "ollama",
                     "provider_model_id": "all-minilm:latest",
@@ -162,6 +163,7 @@ def mocked_library_client(
     monkeypatch,
     mocked_llm_response,
     library_stack_config_file,
+    embedding_dimension,
 ):
     completion_text = mocked_llm_response
 
@@ -190,7 +192,11 @@ def mocked_library_client(
         embedding_input = getattr(req, "input", None)
         n = len(embedding_input) if isinstance(embedding_input, list) else 1
         data = [
-            SimpleNamespace(embedding=[0.1, 0.2, 0.3], index=i, object="embedding")
+            SimpleNamespace(
+                embedding=[random.random() for _ in range(embedding_dimension)],
+                index=i,
+                object="embedding",
+            )
             for i in range(n)
         ]
         return SimpleNamespace(

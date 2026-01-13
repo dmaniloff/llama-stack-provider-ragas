@@ -1,4 +1,5 @@
 import os
+import random
 from datetime import datetime
 
 import pytest
@@ -39,6 +40,12 @@ def unique_timestamp():
 
 
 @pytest.fixture
+def embedding_dimension():
+    """Embedding dimension used for testing."""
+    return 384
+
+
+@pytest.fixture
 def lls_client(request):
     if request.config.getoption("--no-mock-inference") is True:
         return request.getfixturevalue("real_lls_client")
@@ -63,7 +70,7 @@ def mocked_lls_client(mocked_lls_clients):
 
 
 @pytest.fixture()
-def mocked_lls_clients(monkeypatch, request):
+def mocked_lls_clients(monkeypatch, request, embedding_dimension):
     """
     Mock LLM inference (embeddings and completions) by default,
     unless --mock-inference=False is passed in the command line.
@@ -87,7 +94,11 @@ def mocked_lls_clients(monkeypatch, request):
         # return one embedding vector per input string
         return CreateEmbeddingsResponse(
             data=[
-                Data(embedding=[0.1, 0.2, 0.3], index=i, object="embedding")
+                Data(
+                    embedding=[random.random() for _ in range(embedding_dimension)],
+                    index=i,
+                    object="embedding",
+                )
                 for i in range(n)
             ],
             model="mocked/model",
