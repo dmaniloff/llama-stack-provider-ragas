@@ -5,6 +5,7 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        args: [--allow-multiple-documents]
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: debug-statements
@@ -21,7 +22,7 @@ repos:
     hooks:
       - id: mypy
         args: [--ignore-missing-imports, --show-error-codes, --no-strict-optional]
-        additional_dependencies: [types-requests]
+        additional_dependencies: [types-requests, types-PyYAML]
 
   - repo: local
     hooks:
@@ -31,4 +32,4 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        args: [-c, 'KUBEFLOW_BASE_IMAGE=dummy uv run pytest -v -m "not integration_test" --tb=short --maxfail=3; ret=$?; [ $ret = 5 ] && exit 0 || exit $ret']
+        args: [-c, 'KUBEFLOW_BASE_IMAGE=dummy uv run pytest -v -m "not lls_integration and not kfp_integration" --tb=short --maxfail=3; ret=$?; [ $ret = 5 ] && exit 0 || exit $ret']

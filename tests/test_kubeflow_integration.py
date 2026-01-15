@@ -9,12 +9,18 @@ import pytest
 from kfp import dsl
 from ragas.metrics import answer_relevancy
 
-from llama_stack_provider_ragas.remote.kubeflow.pipeline import (
-    ragas_evaluation_pipeline,
-)
+pytestmark = pytest.mark.kfp_integration
 
-# Mark all tests as integration tests
-pytestmark = pytest.mark.integration_test
+
+# Skip the entire module if required environment variables are missing
+required_env_vars = ["KUBEFLOW_PIPELINES_ENDPOINT", "KUBEFLOW_BASE_IMAGE"]
+missing_vars = [var for var in required_env_vars if not os.environ.get(var)]
+if missing_vars:
+    pytest.skip(
+        f"Kubeflow environment variables not set: {', '.join(missing_vars)}. "
+        "Set these environment variables to run Kubeflow integration tests.",
+        allow_module_level=True,
+    )
 
 
 @pytest.fixture
@@ -204,6 +210,10 @@ def test_full_pipeline(
     sampling_params,
     unique_timestamp,
 ):
+    from llama_stack_provider_ragas.remote.kubeflow.pipeline import (
+        ragas_evaluation_pipeline,
+    )
+
     dataset_id = f"test_ragas_dataset_remote_{unique_timestamp}"
     lls_client.datasets.register(
         dataset_id=dataset_id,

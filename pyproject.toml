@@ -62,7 +62,8 @@ addopts = "-v"
 log_cli = true
 log_cli_level = "INFO"
 markers = [
-    "integration_test: Integration tests that require a running Llama Stack server",
+    "lls_integration: Llama Stack integration tests",
+    "kfp_integration: Kubeflow Pipelines integration tests",
 ]
 
 [tool.ruff]

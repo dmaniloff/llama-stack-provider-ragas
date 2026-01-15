@@ -1,9 +1,19 @@
 import os
+import random
 from datetime import datetime
 
 import pytest
 from dotenv import load_dotenv
-from llama_stack_client import LlamaStackClient
+from llama_stack_client import AsyncLlamaStackClient, LlamaStackClient
+from llama_stack_client.types.completion_create_response import (
+    Choice,
+    CompletionCreateResponse,
+)
+from llama_stack_client.types.create_embeddings_response import (
+    CreateEmbeddingsResponse,
+    Data,
+    Usage,
+)
 from ragas import EvaluationDataset
 
 from llama_stack_provider_ragas.compat import SamplingParams, TopPSamplingStrategy
@@ -16,16 +26,134 @@ from llama_stack_provider_ragas.config import (
 load_dotenv()
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--no-mock-inference",
+        action="store_true",
+        help="Don't mock LLM inference (embeddings and completions)",
+    )
+
+
 @pytest.fixture
 def unique_timestamp():
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 @pytest.fixture
-def lls_client():
-    return LlamaStackClient(
-        base_url=os.environ.get("KUBEFLOW_LLAMA_STACK_URL", "http://localhost:8321")
-    )
+def embedding_dimension():
+    """Embedding dimension used for testing."""
+    return 384
+
+
+@pytest.fixture
+def lls_client(request):
+    if request.config.getoption("--no-mock-inference") is True:
+        return request.getfixturevalue("real_lls_client")
+    else:
+        return request.getfixturevalue("mocked_lls_client")
+
+
+@pytest.fixture
+def real_lls_client():
+    return LlamaStackClient(base_url=os.environ.get("KUBEFLOW_LLAMA_STACK_URL"))
+
+
+@pytest.fixture(autouse=True)
+def mocked_llm_response(request):
+    return getattr(request, "param", "Hello, world!")
+
+
+@pytest.fixture()
+def mocked_lls_client(mocked_lls_clients):
+    sync_client, _ = mocked_lls_clients
+    return sync_client
+
+
+@pytest.fixture()
+def mocked_lls_clients(monkeypatch, request, embedding_dimension):
+    """
+    Mock LLM inference (embeddings and completions) by default,
+    unless --mock-inference=False is passed in the command line.
+
+    You can indirectly parametrize this fixture to customize completion text:
+
+        @pytest.mark.parametrize(
+            "mocked_llm_response",
+            ["Hello from mock!"],
+            indirect=True,
+        )
+    """
+    # Create real clients, but patch only the `.create()` methods we need.
+    base_url = os.environ.get("KUBEFLOW_LLAMA_STACK_URL")
+    sync_client = LlamaStackClient(base_url=base_url)
+    async_client = AsyncLlamaStackClient(base_url=base_url)
+
+    completion_text = request.getfixturevalue("mocked_llm_response")
+
+    def _make_embeddings_response(n: int) -> CreateEmbeddingsResponse:
+        # return one embedding vector per input string
+        return CreateEmbeddingsResponse(
+            data=[
+                Data(
+                    embedding=[random.random() for _ in range(embedding_dimension)],
+                    index=i,
+                    object="embedding",
+                )
+                for i in range(n)
+            ],
+            model="mocked/model",
+            object="list",
+            usage=Usage(prompt_tokens=10, total_tokens=10),
+        )
+
+    def _make_completions_response(text: str) -> CompletionCreateResponse:
+        return CompletionCreateResponse(
+            id="cmpl-123",
+            created=1717000000,
+            choices=[Choice(index=0, text=text, finish_reason="stop")],
+            model="mocked/model",
+            object="text_completion",
+        )
+
+    def _embeddings_create(*args, **kwargs):
+        embedding_input = kwargs.get("input")
+        if isinstance(embedding_input, list):
+            return _make_embeddings_response(len(embedding_input))
+        return _make_embeddings_response(1)
+
+    async def _async_embeddings_create(*args, **kwargs):
+        embedding_input = kwargs.get("input")
+        if isinstance(embedding_input, list):
+            return _make_embeddings_response(len(embedding_input))
+        return _make_embeddings_response(1)
+
+    def _completions_create(*args, **kwargs):
+        return _make_completions_response(completion_text)
+
+    async def _async_completions_create(*args, **kwargs):
+        return _make_completions_response(completion_text)
+
+    # Patch nested methods (avoids dotted-attribute monkeypatch issues on classes).
+    monkeypatch.setattr(sync_client.embeddings, "create", _embeddings_create)
+    monkeypatch.setattr(sync_client.completions, "create", _completions_create)
+    monkeypatch.setattr(async_client.embeddings, "create", _async_embeddings_create)
+    monkeypatch.setattr(async_client.completions, "create", _async_completions_create)
+
+    return sync_client, async_client
+
+
+@pytest.fixture(autouse=True)
+def patch_remote_wrappers(monkeypatch, mocked_lls_clients, request):
+    sync_client, async_client = mocked_lls_clients
+    if request.config.getoption("--no-mock-inference") is not True:
+        from llama_stack_provider_ragas.remote import wrappers_remote
+
+        monkeypatch.setattr(
+            wrappers_remote, "LlamaStackClient", lambda *a, **k: sync_client
+        )
+        monkeypatch.setattr(
+            wrappers_remote, "AsyncLlamaStackClient", lambda *a, **k: async_client
+        )
 
 
 @pytest.fixture
