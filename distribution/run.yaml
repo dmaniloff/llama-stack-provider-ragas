@@ -40,6 +40,12 @@ providers:
       kvstore:
         namespace: datasetio::localfs
         backend: kv_default
+  - provider_id: huggingface
+    provider_type: remote::huggingface
+    config:
+      kvstore:
+        namespace: datasetio::huggingface
+        backend: kv_default
   inference:
     - provider_id: ollama
       provider_type: remote::ollama
