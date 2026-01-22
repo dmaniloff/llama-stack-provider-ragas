@@ -1558,7 +1558,7 @@ wheels = [
 
 [[package]]
 name = "llama-stack-provider-ragas"
-version = "0.5.1"
+version = "0.5.2"
 source = { editable = "." }
 dependencies = [
     { name = "datasets" },
