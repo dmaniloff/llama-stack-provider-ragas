@@ -18,6 +18,7 @@ def ragas_evaluation_pipeline(
     llama_stack_base_url: str,
     s3_credentials_secret_name: str,
     result_s3_location: str,
+    results_s3_storage_options: dict,
     num_examples: int = -1,
 ):
     # TODO: consider a step here to validate that:
@@ -36,6 +37,7 @@ def ragas_evaluation_pipeline(
         metrics=metrics,
         llama_stack_base_url=llama_stack_base_url,
         result_s3_location=result_s3_location,
+        results_s3_storage_options=results_s3_storage_options,
     )
     kubernetes.use_secret_as_env(
         ragas_result,
@@ -46,7 +48,6 @@ def ragas_evaluation_pipeline(
             "AWS_DEFAULT_REGION": "AWS_DEFAULT_REGION",
         },
     )
-    # TODO: need to store the ragas_result.uri to later retrieve the results
 
 
 # TODO: add a pipeline that processes each dataset in parallel

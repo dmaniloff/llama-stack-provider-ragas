@@ -201,6 +201,7 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
             "embedding_model": self.config.embedding_model,
             "metrics": job.runtime_config.benchmark.scoring_functions,
             "result_s3_location": job.result_s3_location,
+            "results_s3_storage_options": job.runtime_config.kubeflow_config.results_s3_storage_options,
             "s3_credentials_secret_name": job.runtime_config.kubeflow_config.s3_credentials_secret_name,
         }
 
@@ -252,14 +253,20 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
     async def _fetch_kubeflow_results(self, job: RagasEvaluationJob) -> None:
         """Fetch results directly from S3."""
         try:
-            df = pd.read_json(job.result_s3_location, lines=True)
+            result_df = pd.read_json(
+                job.result_s3_location,
+                lines=True,
+                storage_options=job.runtime_config.kubeflow_config.results_s3_storage_options,
+            )
             logger.info(f"Successfully fetched results from {job.result_s3_location}")
         except Exception as e:
             raise RagasEvaluationError(
                 f"Failed to fetch results from {job.result_s3_location}: {str(e)}"
             ) from e
 
-        table_output = render_dataframe_as_table(df, "Fetched Evaluation Results")
+        table_output = render_dataframe_as_table(
+            result_df, "Fetched Evaluation Results"
+        )
         logger.info(f"Fetched Evaluation Results:\n{table_output}")
 
         # TODO: move the rest into a conversion function

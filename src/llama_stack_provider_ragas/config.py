@@ -84,6 +84,22 @@ class KubeflowConfig(BaseModel):
         description="S3 prefix (folder) where the evaluation results will be written.",
     )
 
+    results_s3_endpoint: str = Field(
+        description=(
+            "S3-compatible endpoint for results storage (e.g. AWS S3, MinIO). "
+        ),
+        default="https://s3.us-east-1.amazonaws.com",
+    )
+
+    @property
+    def results_s3_storage_options(self) -> dict[str, object]:
+        storage_options: dict[str, object] = {
+            "client_kwargs": {"endpoint_url": self.results_s3_endpoint},
+        }
+        if "minio" in self.results_s3_endpoint.lower():
+            storage_options["config_kwargs"] = {"s3": {"addressing_style": "path"}}
+        return storage_options
+
     s3_credentials_secret_name: str = Field(
         description=(
             "Name of the AWS credentials secret. "
