@@ -276,24 +276,17 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
         )
         logger.info(f"Fetched Evaluation Results:\n{table_output}")
 
-        # TODO: move the rest into a conversion function
-        generation_columns = [
-            "user_input",
-            "response",
-            "retrieved_contexts",
-            "reference",
-        ]
-        generations = df[generation_columns].to_dict("records")
-
         metric_columns = [
             col
-            for col in df.columns
+            for col in result_df.columns
             if col in job.runtime_config.benchmark.scoring_functions
         ]
+        generation_columns = result_df.columns.difference(metric_columns)
+        generations = result_df[generation_columns].to_dict("records")
         scores = {}
 
         for metric_name in metric_columns:
-            metric_scores = df[metric_name].dropna().tolist()
+            metric_scores = result_df[metric_name].dropna().tolist()
             score_rows = [{"score": score} for score in metric_scores]
 
             scores[metric_name] = ScoringResult(
