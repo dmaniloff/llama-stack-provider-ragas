@@ -231,22 +231,29 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
 
         try:
             run_detail = self.kfp_client.get_run(job.kubeflow_run_id)
-            if run_detail.state == "FAILED":
-                # TODO: add error message
-                job.status = JobStatus.failed
-            elif run_detail.state == "SUCCEEDED":
-                job.status = JobStatus.completed
-                await self._fetch_kubeflow_results(job)
-            elif run_detail.state == "RUNNING" or run_detail.state == "PENDING":
-                job.status = JobStatus.in_progress
-            else:
-                raise RagasEvaluationError(
-                    f"Unknown Kubeflow run state: {run_detail.state}"
-                )
         except Exception as e:
             # TODO: handle expired token issues
             logger.error(f"Failed to get job status: {str(e)}")
             raise RagasEvaluationError(f"Failed to get job status: {str(e)}") from e
+        else:
+            if run_detail.state == "FAILED":
+                # TODO: add error message
+                job.status = JobStatus.failed
+            elif run_detail.state == "RUNNING" or run_detail.state == "PENDING":
+                job.status = JobStatus.in_progress
+            elif run_detail.state == "SUCCEEDED":
+                job.status = JobStatus.completed
+                try:
+                    await self._fetch_kubeflow_results(job)
+                except Exception as e:
+                    raise RagasEvaluationError(
+                        f"Run was successful, but failed to fetch results: {str(e)}"
+                    ) from e
+
+            else:
+                raise RagasEvaluationError(
+                    f"Unknown Kubeflow run state: {run_detail.state}"
+                )
 
         return job
 
