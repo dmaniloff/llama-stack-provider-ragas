@@ -91,12 +91,21 @@ class KubeflowConfig(BaseModel):
         default="https://s3.us-east-1.amazonaws.com",
     )
 
+    results_s3_path_style: bool = Field(
+        description=(
+            "Whether to use path-style addressing for the results S3 endpoint. "
+            "Set this to True for MinIO and other S3-compatible providers that "
+            "require path-style addressing."
+        ),
+        default=False,
+    )
+
     @property
     def results_s3_storage_options(self) -> dict[str, object]:
         storage_options: dict[str, object] = {
             "client_kwargs": {"endpoint_url": self.results_s3_endpoint},
         }
-        if "minio" in self.results_s3_endpoint.lower():
+        if self.results_s3_path_style:
             storage_options["config_kwargs"] = {"s3": {"addressing_style": "path"}}
         return storage_options
 
