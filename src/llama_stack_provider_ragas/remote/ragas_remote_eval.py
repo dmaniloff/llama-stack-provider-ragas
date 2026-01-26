@@ -201,6 +201,7 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
             "embedding_model": self.config.embedding_model,
             "metrics": job.runtime_config.benchmark.scoring_functions,
             "result_s3_location": job.result_s3_location,
+            "results_s3_storage_options": job.runtime_config.kubeflow_config.results_s3_storage_options,
             "s3_credentials_secret_name": job.runtime_config.kubeflow_config.s3_credentials_secret_name,
         }
 
@@ -230,56 +231,62 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
 
         try:
             run_detail = self.kfp_client.get_run(job.kubeflow_run_id)
-            if run_detail.state == "FAILED":
-                # TODO: add error message
-                job.status = JobStatus.failed
-            elif run_detail.state == "SUCCEEDED":
-                job.status = JobStatus.completed
-                await self._fetch_kubeflow_results(job)
-            elif run_detail.state == "RUNNING" or run_detail.state == "PENDING":
-                job.status = JobStatus.in_progress
-            else:
-                raise RagasEvaluationError(
-                    f"Unknown Kubeflow run state: {run_detail.state}"
-                )
         except Exception as e:
             # TODO: handle expired token issues
             logger.error(f"Failed to get job status: {str(e)}")
             raise RagasEvaluationError(f"Failed to get job status: {str(e)}") from e
+        else:
+            if run_detail.state == "FAILED":
+                # TODO: add error message
+                job.status = JobStatus.failed
+            elif run_detail.state == "RUNNING" or run_detail.state == "PENDING":
+                job.status = JobStatus.in_progress
+            elif run_detail.state == "SUCCEEDED":
+                job.status = JobStatus.completed
+                try:
+                    await self._fetch_kubeflow_results(job)
+                except Exception as e:
+                    raise RagasEvaluationError(
+                        f"Run was successful, but failed to fetch results: {str(e)}"
+                    ) from e
+
+            else:
+                raise RagasEvaluationError(
+                    f"Unknown Kubeflow run state: {run_detail.state}"
+                )
 
         return job
 
     async def _fetch_kubeflow_results(self, job: RagasEvaluationJob) -> None:
         """Fetch results directly from S3."""
         try:
-            df = pd.read_json(job.result_s3_location, lines=True)
+            result_df = pd.read_json(
+                job.result_s3_location,
+                lines=True,
+                storage_options=job.runtime_config.kubeflow_config.results_s3_storage_options,
+            )
             logger.info(f"Successfully fetched results from {job.result_s3_location}")
         except Exception as e:
             raise RagasEvaluationError(
                 f"Failed to fetch results from {job.result_s3_location}: {str(e)}"
             ) from e
 
-        table_output = render_dataframe_as_table(df, "Fetched Evaluation Results")
+        table_output = render_dataframe_as_table(
+            result_df, "Fetched Evaluation Results"
+        )
         logger.info(f"Fetched Evaluation Results:\n{table_output}")
-
-        # TODO: move the rest into a conversion function
-        generation_columns = [
-            "user_input",
-            "response",
-            "retrieved_contexts",
-            "reference",
-        ]
-        generations = df[generation_columns].to_dict("records")
 
         metric_columns = [
             col
-            for col in df.columns
+            for col in result_df.columns
             if col in job.runtime_config.benchmark.scoring_functions
         ]
+        generation_columns = result_df.columns.difference(metric_columns)
+        generations = result_df[generation_columns].to_dict("records")
         scores = {}
 
         for metric_name in metric_columns:
-            metric_scores = df[metric_name].dropna().tolist()
+            metric_scores = result_df[metric_name].dropna().tolist()
             score_rows = [{"score": score} for score in metric_scores]
 
             scores[metric_name] = ScoringResult(
