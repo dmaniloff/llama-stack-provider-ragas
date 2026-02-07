@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -1544,7 +1544,7 @@ wheels = [
 [[package]]
 name = "llama-stack-api"
 version = "0.5.0"
-source = { git = "https://github.com/llamastack/llama-stack.git?subdirectory=src%2Fllama_stack_api&rev=v0.5.0#1195931dc4bc9f3ed32e51a465fbf7ccf96e0465" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fastapi" },
     { name = "jsonschema" },
@@ -1552,6 +1552,10 @@ dependencies = [
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4d/44/3fa5f13b5da7eed8f790ae65784c6efbc325c142af5f6f80537717912af0/llama_stack_api-0.5.0.tar.gz", hash = "sha256:51074ec06ab87ece7e9461bf47d878b25eb232b2a009749314e2b8a5a5d83ca0", size = 126401, upload-time = "2026-02-05T17:23:55.323Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1f/d7/4238a8f088d756ab756060d4daa05304dd72b209015adf31f6799099affd/llama_stack_api-0.5.0-py3-none-any.whl", hash = "sha256:dfd4ffff70207c49c8e734b503b42bc41860d271e7fe8745a26a41a4d4419ff8", size = 151595, upload-time = "2026-02-05T17:23:54.022Z" },
 ]
 
 [[package]]
@@ -1647,7 +1651,7 @@ requires-dist = [
     { name = "kfp-server-api", marker = "extra == 'remote'", specifier = ">=2.0.0" },
     { name = "kubernetes", marker = "extra == 'remote'", specifier = ">=30.0.0" },
     { name = "llama-stack", specifier = ">=0.5.0" },
-    { name = "llama-stack-api", git = "https://github.com/llamastack/llama-stack.git?subdirectory=src%2Fllama_stack_api&rev=v0.5.0" },
+    { name = "llama-stack-api", specifier = ">=0.5.0" },
     { name = "llama-stack-client", specifier = ">=0.5.0" },
     { name = "llama-stack-provider-ragas", extras = ["distro"], marker = "extra == 'dev'" },
     { name = "llama-stack-provider-ragas", extras = ["remote"], marker = "extra == 'dev'" },

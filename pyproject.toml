@@ -26,8 +26,7 @@ keywords = ["llama-stack", "ragas", "evaluation"]
 dependencies = [
     "setuptools-scm",
     "llama-stack>=0.5.0",
-    # TODO: remove this once llama-stack-api is pip installable & importable
-    "llama-stack-api @ git+https://github.com/llamastack/llama-stack.git@v0.5.0#subdirectory=src/llama_stack_api",
+    "llama-stack-api>=0.5.0",
     "greenlet==3.2.4", # inline/files/localfs errors saying greenlet not found
     "ragas==0.3.0",
     "pandas<2.3.0",
@@ -56,9 +55,6 @@ dev = [
     "ruff",
     "mypy",
 ]
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

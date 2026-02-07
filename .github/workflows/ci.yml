@@ -103,7 +103,7 @@ jobs:
           uv pip install "llama-stack-api @ git+https://github.com/llamastack/llama-stack.git@main#subdirectory=src/llama_stack_api"
         else
           uv pip install "llama-stack==${{ matrix.llama-stack-version }}"
-          uv pip install "llama-stack-api @ git+https://github.com/llamastack/llama-stack.git@v${{ matrix.llama-stack-version }}#subdirectory=src/llama_stack_api"
+          uv pip install "llama-stack-api==${{ matrix.llama-stack-version }}"
         fi
 
     - name: Run integration tests
