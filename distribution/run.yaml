@@ -94,9 +94,27 @@ registered_resources:
     model_type: llm
   shields: []
   vector_dbs: []
-  datasets: []
+  datasets:
+  - purpose: eval/messages-answer
+    source:
+      type: uri
+      uri: huggingface://datasets/dmaniloff/hf_doc_qa_ragas_eval_dataset?split=train
+    metadata: {}
+    dataset_id: hf_doc_qa_ragas_eval
   scoring_fns: []
-  benchmarks: []
+  benchmarks:
+  - benchmark_id: hf-doc-qa-ragas-inline-benchmark
+    dataset_id: hf_doc_qa_ragas_eval
+    scoring_functions:
+      - semantic_similarity
+    provider_id: trustyai_ragas_inline
+    metadata: {}
+  - benchmark_id: hf-doc-qa-ragas-remote-benchmark
+    dataset_id: hf_doc_qa_ragas_eval
+    scoring_functions:
+      - semantic_similarity
+    provider_id: trustyai_ragas_remote
+    metadata: {}
   tool_groups: []
 server:
   port: 8321
