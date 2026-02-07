@@ -25,7 +25,7 @@ def library_stack_config(tmp_path, embedding_dimension):
 
     return {
         "version": 2,
-        "image_name": "test_ragas_inline",
+        "distro_name": "test_ragas_inline",
         "apis": ["eval", "inference", "files", "datasetio"],
         "providers": {
             "inference": [

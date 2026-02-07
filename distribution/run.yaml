@@ -1,5 +1,5 @@
 version: 2
-image_name: trustyai_ragas_distro
+distro_name: trustyai_ragas_distro
 apis:
 - eval
 - inference
