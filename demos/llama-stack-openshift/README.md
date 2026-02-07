@@ -4,7 +4,7 @@
 * OpenShift AI or Open Data Hub installed on your OpenShift Cluster
 * Data Science Pipeline Server configured
 * Llama Stack Operator installed
-* A VLLM hosted Model either through Kserve or MaaS. You can follow these [docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_cloud_service/1/html/working_with_rag/deploying-a-rag-stack-in-a-data-science-project_rag#Deploying-a-llama-model-with-kserve_rag) until step 3.4
+* A VLLM hosted Model either through Kserve or MaaS. You can follow these [docs](https://docs.redhat.com/en/documentation/red_hat_openshift_ai_cloud_service/1/html/working_with_llama_stack/deploying-a-rag-stack-in-a-data-science-project_rag) until step 3.4
 
 ## Setup
 Create a secret for storing your model's information.
