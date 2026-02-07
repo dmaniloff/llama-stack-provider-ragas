@@ -98,14 +98,12 @@ jobs:
 
     - name: Install llama-stack version
       run: |
-        uv remove llama-stack
-        uv remove llama-stack-api
         if [ "${{ matrix.llama-stack-version }}" = "main" ]; then
-          uv add "llama-stack @ git+https://github.com/llamastack/llama-stack.git@main"
-          uv add "llama-stack-api @ git+https://github.com/llamastack/llama-stack.git@main#subdirectory=src/llama_stack_api"
+          uv pip install "llama-stack @ git+https://github.com/llamastack/llama-stack.git@main"
+          uv pip install "llama-stack-api @ git+https://github.com/llamastack/llama-stack.git@main#subdirectory=src/llama_stack_api"
         else
-          uv add "llama-stack==${{ matrix.llama-stack-version }}"
-          uv add "llama-stack-api @ git+https://github.com/llamastack/llama-stack.git@v${{ matrix.llama-stack-version }}#subdirectory=src/llama_stack_api"
+          uv pip install "llama-stack==${{ matrix.llama-stack-version }}"
+          uv pip install "llama-stack-api @ git+https://github.com/llamastack/llama-stack.git@v${{ matrix.llama-stack-version }}#subdirectory=src/llama_stack_api"
         fi
 
     - name: Run integration tests
