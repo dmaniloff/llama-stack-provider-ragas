@@ -1,18 +1,15 @@
 import logging
 import uuid
-from typing import Any
 
 import pandas as pd
 import requests
 from pydantic import BaseModel
 
+from ..base import EmptyEvaluateResponse, RagasEvaluatorBase
 from ..compat import (
     Benchmark,
     BenchmarkConfig,
-    BenchmarksProtocolPrivate,
-    Eval,
     EvaluateResponse,
-    EvaluateRowsRequest,
     Job,
     JobCancelRequest,
     JobResultRequest,
@@ -56,22 +53,16 @@ class RagasEvaluationJob(Job):
         return f"{self.runtime_config.kubeflow_config.results_s3_prefix.rstrip('/')}/{self.job_id}/results.jsonl"
 
 
-@json_schema_type
-class EmptyEvaluateResponse(EvaluateResponse):
-    generations: list[dict[str, Any]] = []
-    scores: dict[str, ScoringResult] = {}
-
-
-class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
+class RagasEvaluatorRemote(RagasEvaluatorBase):
     """Execute Ragas evaluations using Kubeflow Pipelines."""
 
     def __init__(
         self,
         config: RagasProviderRemoteConfig,
     ):
+        super().__init__()
         self.config = config
         self.evaluation_jobs: dict[str, RagasEvaluationJob] = {}
-        self.benchmarks: dict[str, Benchmark] = {}
         self._kfp_client = None
 
     @property
@@ -150,15 +141,9 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
             benchmark_id = request.benchmark_id
             benchmark_config = request.benchmark_config
 
-            eval_candidate = benchmark_config.eval_candidate
-            if eval_candidate.type != "model":
-                raise RagasEvaluationError(
-                    "Ragas currently only supports model candidates. "
-                    "We will add support for agents soon!"
-                )
-
-            if (task_def := self.benchmarks.get(benchmark_id)) is None:
-                raise RagasEvaluationError(f"Benchmark {benchmark_id} not found")
+            # Use base class validation
+            self._validate_eval_candidate(benchmark_config)
+            task_def = self._get_benchmark(benchmark_id)
 
             job_id = str(uuid.uuid4())
             job = RagasEvaluationJob(
@@ -221,12 +206,6 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
         )
 
         return run_result.run_id  # type: ignore
-
-    async def evaluate_rows(
-        self,
-        request: EvaluateRowsRequest,
-    ) -> EvaluateResponse:
-        raise NotImplementedError("Not implemented yet -- use run_eval instead")
 
     async def job_status(self, request: JobStatusRequest) -> Job:
         # TODO: replace inmem dict with kubeflow client
@@ -326,10 +305,9 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
             raise RagasEvaluationError(f"Failed to cancel job: {str(e)}") from e
 
     async def job_result(self, request: JobResultRequest) -> EvaluateResponse:
-        status_request = JobStatusRequest(
-            benchmark_id=request.benchmark_id, job_id=request.job_id
+        job = await self.job_status(
+            JobStatusRequest(benchmark_id=request.benchmark_id, job_id=request.job_id)
         )
-        job = await self.job_status(status_request)
 
         if job.status == JobStatus.completed:
             return job.result
@@ -350,5 +328,5 @@ class RagasEvaluatorRemote(Eval, BenchmarksProtocolPrivate):
                 f"Invalid metrics: {benchmark.scoring_functions}. "
                 f"Available metrics: {AVAILABLE_METRICS}"
             )
-        self.benchmarks[benchmark.benchmark_id] = benchmark
-        logger.info(f"Registered benchmark {benchmark.benchmark_id}")
+        # Call parent implementation
+        await super().register_benchmark(benchmark)

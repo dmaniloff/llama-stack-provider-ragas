@@ -1,24 +1,16 @@
 import asyncio
 import functools as ft
 import logging
-from typing import Any
 
 from ragas import EvaluationDataset
 from ragas import evaluate as ragas_evaluate
-from ragas.metrics import (
-    Metric,
-    answer_relevancy,
-    context_precision,
-    context_recall,
-    faithfulness,
-)
+from ragas.metrics import Metric
 from ragas.run_config import RunConfig
 
+from ..base import EmptyEvaluateResponse, RagasEvaluatorBase
 from ..compat import (
     Benchmark,
-    BenchmarksProtocolPrivate,
     DatasetIO,
-    Eval,
     EvaluateResponse,
     EvaluateRowsRequest,
     Inference,
@@ -33,7 +25,6 @@ from ..compat import (
     json_schema_type,
 )
 from ..config import RagasProviderInlineConfig
-from ..constants import METRIC_MAPPING
 from ..errors import RagasEvaluationError
 from ..logging_utils import render_dataframe_as_table
 from .wrappers_inline import LlamaStackInlineEmbeddings, LlamaStackInlineLLM
@@ -50,25 +41,18 @@ class RagasEvaluationJob(Job):
     eval_config: RagasProviderInlineConfig
 
 
-# TODO: maybe unify in __init__.py
-@json_schema_type
-class EmptyEvaluateResponse(EvaluateResponse):
-    generations: list[dict[str, Any]] = []
-    scores: dict[str, ScoringResult] = {}
-
-
-class RagasEvaluatorInline(Eval, BenchmarksProtocolPrivate):
+class RagasEvaluatorInline(RagasEvaluatorBase):
     def __init__(
         self,
         config: RagasProviderInlineConfig,
         datasetio_api: DatasetIO,
         inference_api: Inference,
     ):
+        super().__init__()
         self.config = config
         self.datasetio_api = datasetio_api
         self.inference_api = inference_api
         self.evaluation_jobs: dict[str, RagasEvaluationJob] = {}
-        self.benchmarks: dict[str, Benchmark] = {}
 
     async def run_eval(
         self,
@@ -77,15 +61,11 @@ class RagasEvaluatorInline(Eval, BenchmarksProtocolPrivate):
         benchmark_id = request.benchmark_id
         benchmark_config = request.benchmark_config
 
-        eval_candidate = benchmark_config.eval_candidate
-        if eval_candidate.type != "model":
-            raise RagasEvaluationError(
-                "Ragas currently only supports model candidates. "
-                "We will add support for agents soon!"
-            )
+        # Use base class validation
+        self._validate_eval_candidate(benchmark_config)
 
         model_id = benchmark_config.eval_candidate.model
-        sampling_params = eval_candidate.sampling_params
+        sampling_params = benchmark_config.eval_candidate.sampling_params
 
         # for now, inline evals are hardcoded to run with max_workers=1
         ragas_run_config = RunConfig(max_workers=1)
@@ -97,7 +77,7 @@ class RagasEvaluatorInline(Eval, BenchmarksProtocolPrivate):
             self.inference_api, self.config.embedding_model, run_config=ragas_run_config
         )
 
-        task_def = self.benchmarks[benchmark_id]  # TODO: add error handling
+        task_def = self._get_benchmark(benchmark_id)
         dataset_id = task_def.dataset_id
         scoring_functions = task_def.scoring_functions
         metrics = self._get_metrics(scoring_functions)
@@ -127,36 +107,6 @@ class RagasEvaluatorInline(Eval, BenchmarksProtocolPrivate):
         )
         self.evaluation_jobs[job_id] = job
         return job
-
-    def _get_metrics(self, scoring_functions: list[str]) -> list[Metric]:
-        """Get the list of metrics to run based on scoring functions.
-
-        Args:
-            scoring_functions: List of scoring function names to use
-
-        Returns:
-            List of metrics (unconfigured - ragas_evaluate will configure them)
-        """
-        metrics = []
-
-        for metric_name in scoring_functions:
-            if metric_name in METRIC_MAPPING:
-                metric = METRIC_MAPPING[metric_name]
-                metrics.append(metric)
-            else:
-                logger.warning(f"Unknown metric: {metric_name}")
-
-        if not metrics:
-            # Use default metrics if none specified or all invalid
-            logger.info("Using default metrics")
-            metrics = [
-                answer_relevancy,
-                context_precision,
-                faithfulness,
-                context_recall,
-            ]
-
-        return metrics
 
     async def _prepare_dataset(
         self, dataset_id: str, limit: int | None = None
@@ -252,10 +202,9 @@ class RagasEvaluatorInline(Eval, BenchmarksProtocolPrivate):
         raise NotImplementedError("Job cancel is not implemented yet")
 
     async def job_result(self, request: JobResultRequest) -> EvaluateResponse:
-        status_request = JobStatusRequest(
-            benchmark_id=request.benchmark_id, job_id=request.job_id
+        job = await self.job_status(
+            JobStatusRequest(benchmark_id=request.benchmark_id, job_id=request.job_id)
         )
-        job = await self.job_status(status_request)
 
         if job.status == JobStatus.completed:
             return job.result
