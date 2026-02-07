@@ -16,7 +16,6 @@ from .compat import (
     Job,
     JobCancelRequest,
     JobResultRequest,
-    JobStatus,
     JobStatusRequest,
     RunEvalRequest,
     ScoringResult,
