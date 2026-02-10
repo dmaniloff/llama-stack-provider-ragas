@@ -70,8 +70,10 @@ def retrieve_data_from_llama_stack(
     from llama_stack_client import LlamaStackClient
 
     client = LlamaStackClient(base_url=llama_stack_base_url)
-    dataset = client.datasets.retrieve(dataset_id=dataset_id)
-    df = pd.DataFrame(dataset.source.rows)
+    response = client.beta.datasets.iterrows(
+        dataset_id=dataset_id, limit=num_examples if num_examples > 0 else None
+    )
+    df = pd.DataFrame(response.data)
     df.to_json(output_dataset.path, orient="records", lines=True)
 
 

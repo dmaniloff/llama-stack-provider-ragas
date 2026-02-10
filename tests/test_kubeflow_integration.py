@@ -215,7 +215,7 @@ def test_full_pipeline(
     )
 
     dataset_id = f"test_ragas_dataset_remote_{unique_timestamp}"
-    lls_client.datasets.register(
+    lls_client.beta.datasets.register(
         dataset_id=dataset_id,
         purpose="eval/question-answer",
         source={"type": "rows", "rows": raw_evaluation_data},

@@ -25,7 +25,7 @@ def library_stack_config(tmp_path, embedding_dimension):
 
     return {
         "version": 2,
-        "image_name": "test_ragas_inline",
+        "distro_name": "test_ragas_inline",
         "apis": ["eval", "inference", "files", "datasetio"],
         "providers": {
             "inference": [
@@ -267,24 +267,24 @@ def test_full_evaluation_with_library_client(
     metric_to_test,
 ):
     dataset_id = f"library_full_test_dataset_{unique_timestamp}"
-    library_client.datasets.register(
+    library_client.beta.datasets.register(
         dataset_id=dataset_id,
         purpose="eval/question-answer",
         source={"type": "rows", "rows": raw_evaluation_data[:1]},
         metadata={"provider_id": "localfs"},
     )
-    datasets = library_client.datasets.list()
+    datasets = library_client.beta.datasets.list()
     print(f"Available datasets: {[d.identifier for d in datasets]}")
     assert any(d.identifier == dataset_id for d in datasets)
 
     benchmark_id = f"library_full_test_benchmark_{unique_timestamp}"
-    library_client.benchmarks.register(
+    library_client.alpha.benchmarks.register(
         benchmark_id=benchmark_id,
         dataset_id=dataset_id,
         scoring_functions=[metric_to_test.name],
         provider_id=PROVIDER_ID_INLINE,
     )
-    benchmarks = library_client.benchmarks.list()
+    benchmarks = library_client.alpha.benchmarks.list()
     print(f"Available benchmarks: {[b.identifier for b in benchmarks]}")
     assert any(b.identifier == benchmark_id for b in benchmarks)
 

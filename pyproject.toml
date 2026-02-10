@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llama-stack-provider-ragas"
-version = "0.5.1"
+version = "0.6.0"
 description = "Ragas evaluation as an out-of-tree Llama Stack provider"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -25,13 +25,15 @@ authors = [
 keywords = ["llama-stack", "ragas", "evaluation"]
 dependencies = [
     "setuptools-scm",
-    "llama-stack>0.2.23",
+    "llama-stack>=0.5.0",
+    "llama-stack-api>=0.5.0",
     "greenlet==3.2.4", # inline/files/localfs errors saying greenlet not found
     "ragas==0.3.0",
     "pandas<2.3.0",
     "pyarrow>=21.0.0",
     "requests>=2.32.5",
     "datasets>=2.16.0",
+    "llama-stack-client>=0.5.0",
 ]
 
 [project.urls]

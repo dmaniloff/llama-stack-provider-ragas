@@ -66,9 +66,7 @@ jobs:
         python-version: ["3.12"]
         llama-stack-version:
           - "main"
-          - "0.4.0"
-          - "0.3.5"
-          - "0.3.0"
+          - "0.5.0"
 
     steps:
     - name: Checkout code
@@ -101,9 +99,11 @@ jobs:
     - name: Install llama-stack version
       run: |
         if [ "${{ matrix.llama-stack-version }}" = "main" ]; then
-          uv add "llama-stack @ git+https://github.com/meta-llama/llama-stack.git@main"
+          uv pip install "llama-stack @ git+https://github.com/llamastack/llama-stack.git@main"
+          uv pip install "llama-stack-api @ git+https://github.com/llamastack/llama-stack.git@main#subdirectory=src/llama_stack_api"
         else
-          uv add "llama-stack==${{ matrix.llama-stack-version }}"
+          uv pip install "llama-stack==${{ matrix.llama-stack-version }}"
+          uv pip install "llama-stack-api==${{ matrix.llama-stack-version }}"
         fi
 
     - name: Run integration tests
