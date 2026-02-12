@@ -58,7 +58,7 @@ def get_base_image() -> str:
 
 @dsl.component(
     base_image=get_base_image(),
-    packages_to_install=["llama-stack-provider-ragas[remote]"],
+    packages_to_install=["llama-stack-provider-ragas[remote]==0.5.4"],
 )
 def retrieve_data_from_llama_stack(
     dataset_id: str,
@@ -79,7 +79,7 @@ def retrieve_data_from_llama_stack(
 
 @dsl.component(
     base_image=get_base_image(),
-    packages_to_install=["llama-stack-provider-ragas[remote]"],
+    packages_to_install=["llama-stack-provider-ragas[remote]==0.5.4"],
 )
 def run_ragas_evaluation(
     model: str,
