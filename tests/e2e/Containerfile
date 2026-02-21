@@ -1,0 +1,35 @@
+# This Containerfile is used to build the llama-stack-provider-ragas-distro-image for the e2e tests.
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install uv by copying the static binaries from the official image
+COPY --from=ghcr.io/astral-sh/uv:0.9.21 /uv /uvx /bin/
+
+# Create a venv and make it the default Python for subsequent steps.
+RUN uv venv /app/.venv
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:${PATH}"
+
+# Install sentence-transformers + torch (cached layer — these rarely change).
+RUN uv pip install --python /app/.venv/bin/python \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    torch sentence-transformers einops tokenizers safetensors
+
+# Pre-download the embedding model so no HF fetch is needed at runtime.
+RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('nomic-ai/nomic-embed-text-v1.5')"
+
+# Copy code (changes frequently — kept after heavy layers for caching).
+COPY src /app/src
+COPY distribution /app/distribution
+COPY pyproject.toml /app/pyproject.toml
+COPY uv.lock /app/uv.lock
+COPY README.md /app/README.md
+
+# Install the project into the venv.
+RUN uv pip install --python /app/.venv/bin/python -e ".[remote,distro]"
+
+EXPOSE 8321
+
+ENTRYPOINT ["uv", "run", "--no-sync", "llama", "stack", "run", "distribution/run.yaml"]
