@@ -200,7 +200,7 @@ def remote_eval_config(embedding_model, kubeflow_config):
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def raw_evaluation_data():
     """Sample data for Ragas evaluation."""
     return [
