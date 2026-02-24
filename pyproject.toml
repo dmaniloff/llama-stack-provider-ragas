@@ -64,8 +64,9 @@ addopts = "-v"
 log_cli = true
 log_cli_level = "INFO"
 markers = [
+    "unit: Unit tests for wrapper classes (mocked client by default)",
     "lls_integration: Llama Stack integration tests",
-    "kfp_integration: Kubeflow Pipelines integration tests",
+    "e2e: End-to-end tests against a deployed Llama Stack distribution on OpenShift",
 ]
 
 [tool.ruff]

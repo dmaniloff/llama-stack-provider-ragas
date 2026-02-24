@@ -1,24 +1,41 @@
-"""Test inline evaluation."""
+"""Llama Stack integration tests using an in-process server.
 
-import json
+These tests use ``LlamaStackAsLibraryClient`` to spin up a Llama Stack
+server in-process with the configuration defined in the
+``library_stack_config`` fixture.  By default, LLM inference (embeddings
+and completions) is mocked so no external services are required.
+
+To run against a real inference provider (e.g. a local Ollama instance),
+pass ``--no-mock-inference``::
+
+    pytest tests/test_inline_evaluation.py --no-mock-inference
+
+You can also override the models via environment variables::
+
+    INFERENCE_MODEL=ollama/granite3.3:2b \\
+    EMBEDDING_MODEL=ollama/all-minilm:latest \\
+        pytest tests/test_inline_evaluation.py --no-mock-inference
+"""
+
+import os
 import random
 from types import SimpleNamespace
 
 import pytest
 import yaml
+from base_eval_tests import EvalTester, SmokeTester
 from llama_stack.core.library_client import LlamaStackAsLibraryClient
-from ragas.metrics import answer_relevancy
-from rich import print as rprint
-from rich.pretty import Pretty
 
 from llama_stack_provider_ragas.compat import Api
-from llama_stack_provider_ragas.constants import PROVIDER_ID_INLINE
+from llama_stack_provider_ragas.constants import PROVIDER_ID_INLINE, PROVIDER_ID_REMOTE
 
 pytestmark = pytest.mark.lls_integration
 
 
 @pytest.fixture
-def library_stack_config(tmp_path, embedding_dimension):
+def library_stack_config(
+    tmp_path, embedding_dimension, embedding_model, inference_model
+):
     """Stack configuration for library client testing."""
     storage_dir = tmp_path / "test_storage"
     storage_dir.mkdir()
@@ -41,10 +58,26 @@ def library_stack_config(tmp_path, embedding_dimension):
                     "provider_type": "inline::trustyai_ragas",
                     "module": "llama_stack_provider_ragas.inline",
                     "config": {
-                        "embedding_model": "ollama/all-minilm:latest",
+                        "embedding_model": embedding_model,
                         "kvstore": {"namespace": "ragas", "backend": "kv_default"},
                     },
-                }
+                },
+                {
+                    "provider_id": PROVIDER_ID_REMOTE,
+                    "provider_type": "remote::trustyai_ragas",
+                    "module": "llama_stack_provider_ragas.remote",
+                    "config": {
+                        "embedding_model": embedding_model,
+                        "kubeflow_config": {
+                            "pipelines_endpoint": "http://localhost:8888",
+                            "namespace": "default",
+                            "llama_stack_url": "http://localhost:8321",
+                            "base_image": "python:3.12-slim",
+                            "results_s3_prefix": "s3://ragas-results",
+                            "s3_credentials_secret_name": "aws-credentials",
+                        },
+                    },
+                },
             ],
             "datasetio": [
                 {
@@ -101,16 +134,16 @@ def library_stack_config(tmp_path, embedding_dimension):
             "models": [
                 {
                     "metadata": {"embedding_dimension": embedding_dimension},
-                    "model_id": "all-MiniLM-L6-v2",
+                    "model_id": embedding_model,
                     "provider_id": "ollama",
-                    "provider_model_id": "all-minilm:latest",
+                    "provider_model_id": embedding_model.removeprefix("ollama/"),
                     "model_type": "embedding",
                 },
                 {
                     "metadata": {},
-                    "model_id": "granite3.3:2b",
+                    "model_id": inference_model,
                     "provider_id": "ollama",
-                    "provider_model_id": "granite3.3:2b",
+                    "provider_model_id": inference_model.removeprefix("ollama/"),
                     "model_type": "llm",
                 },
             ],
@@ -124,6 +157,19 @@ def library_stack_config(tmp_path, embedding_dimension):
     }
 
 
+@pytest.fixture(autouse=True)
+def mocked_inference_response(request):
+    """Fake completion text returned by the mocked Ollama inference adapter.
+
+    The in-process library client's ``openai_completion`` and
+    ``openai_embeddings`` methods are monkey-patched in
+    ``mocked_library_client``; this fixture controls the text that the
+    mocked completion endpoint returns.  Use indirect parametrization to
+    override the default value per test.
+    """
+    return getattr(request, "param", "Hello, world!")
+
+
 @pytest.fixture
 def library_stack_config_file(library_stack_config, tmp_path):
     """Write the stack config dict to a temp YAML file and return its path."""
@@ -135,14 +181,16 @@ def library_stack_config_file(library_stack_config, tmp_path):
 
 @pytest.fixture
 def library_client(request):
-    """
-    Mock LLM inference (embeddings and completions) by default,
-    unless --mock-inference=False is passed in the command line.
+    """Return a library client, with or without mocked inference.
 
-    You can indirectly parametrize this fixture to customize the completion text:
+    By default, Ollama inference is mocked so no external services are
+    needed.  Pass ``--no-mock-inference`` to use a real Ollama instance.
+
+    The completion text used by the mock can be overridden via indirect
+    parametrization of ``mocked_inference_response``::
 
         @pytest.mark.parametrize(
-            "mocked_llm_response",
+            "mocked_inference_response",
             ["Hello from mock!"],
             indirect=True,
         )
@@ -161,18 +209,20 @@ def real_library_client(library_stack_config_file):
 @pytest.fixture()
 def mocked_library_client(
     monkeypatch,
-    mocked_llm_response,
+    mocked_inference_response,
     library_stack_config_file,
     embedding_dimension,
+    embedding_model,
+    inference_model,
 ):
-    completion_text = mocked_llm_response
+    completion_text = mocked_inference_response
 
     # Mock Ollama connectivity check & model listing
     async def _fake_check_model_availability(*args, **kwargs):
         return True
 
     async def _fake_list_provider_model_ids(*args, **kwargs):
-        return ["all-minilm:latest", "granite3.3:2b"]
+        return [embedding_model, inference_model]
 
     monkeypatch.setattr("ollama.Client", lambda *args, **kwargs: SimpleNamespace())
 
@@ -225,85 +275,53 @@ def mocked_library_client(
     return real_library_client
 
 
-def test_library_client_health(library_client):
-    assert library_client is not None
-    assert hasattr(library_client, "alpha")
-    assert hasattr(library_client.alpha, "eval")
-
-    models = library_client.models.list()
-    assert len(models) > 0
-    print("Available models:")
-    rprint(Pretty(models, max_depth=6, expand_all=True))
-
-    providers = library_client.providers.list()
-    assert len(providers) > 0
-    assert any(p.api == "eval" for p in providers)
-    print("Available providers:")
-    rprint(Pretty(providers, max_depth=6, expand_all=True))
+@pytest.fixture
+def client(library_client):
+    return library_client
 
 
-@pytest.mark.parametrize(
-    "metric_to_test,mocked_llm_response",
-    [
-        # `answer_relevancy` expects the LLM to output a JSON payload with:
-        # - question: a question implied by the given answer
-        # - noncommittal: 0/1
-        pytest.param(
-            answer_relevancy,
-            json.dumps(
-                {"question": "What is the capital of France?", "noncommittal": 0}
-            ),
-            id="answer_relevancy",
-        ),
-    ],
-    indirect=["mocked_llm_response"],
-)
-def test_full_evaluation_with_library_client(
-    library_client,
-    model,
-    sampling_params,
-    unique_timestamp,
-    raw_evaluation_data,
-    metric_to_test,
+@pytest.fixture
+def inference_model():
+    return os.getenv("INFERENCE_MODEL", "ollama/granite3.3:2b")
+
+
+@pytest.fixture
+def embedding_model():
+    return os.getenv("EMBEDDING_MODEL", "ollama/all-minilm:latest")
+
+
+@pytest.fixture
+def smoke_tester(client, dataset_id, inline_benchmark_id, remote_benchmark_id):
+    return SmokeTester(
+        client,
+        dataset_id,
+        inline_benchmark_id,
+        remote_benchmark_id,
+    )
+
+
+@pytest.fixture
+def eval_tester(
+    client, inference_model, dataset_id, inline_benchmark_id, remote_benchmark_id
 ):
-    dataset_id = f"library_full_test_dataset_{unique_timestamp}"
-    library_client.beta.datasets.register(
-        dataset_id=dataset_id,
-        purpose="eval/question-answer",
-        source={"type": "rows", "rows": raw_evaluation_data[:1]},
-        metadata={"provider_id": "localfs"},
-    )
-    datasets = library_client.beta.datasets.list()
-    print(f"Available datasets: {[d.identifier for d in datasets]}")
-    assert any(d.identifier == dataset_id for d in datasets)
-
-    benchmark_id = f"library_full_test_benchmark_{unique_timestamp}"
-    library_client.alpha.benchmarks.register(
-        benchmark_id=benchmark_id,
-        dataset_id=dataset_id,
-        scoring_functions=[metric_to_test.name],
-        provider_id=PROVIDER_ID_INLINE,
-    )
-    benchmarks = library_client.alpha.benchmarks.list()
-    print(f"Available benchmarks: {[b.identifier for b in benchmarks]}")
-    assert any(b.identifier == benchmark_id for b in benchmarks)
-
-    job = library_client.alpha.eval.run_eval(
-        benchmark_id=benchmark_id,
-        benchmark_config={
-            "eval_candidate": {
-                "type": "model",
-                "model": model,
-                "sampling_params": sampling_params.model_dump(exclude_none=True),
-            },
-            "scoring_params": {},
-        },
+    return EvalTester(
+        client,
+        inference_model,
+        dataset_id,
+        inline_benchmark_id,
+        remote_benchmark_id,
     )
 
-    assert job.job_id is not None
-    assert job.status == "in_progress"
 
-    job = library_client.alpha.eval.jobs.status(
-        benchmark_id=benchmark_id, job_id=job.job_id
-    )
-    assert job.status == "completed"
+@pytest.mark.usefixtures("register_benchmarks")
+def test_library_client_smoke(smoke_tester):
+    smoke_tester.test_models_registered()
+    smoke_tester.test_datasets_registered()
+    smoke_tester.test_benchmarks_registered()
+
+
+@pytest.mark.usefixtures("register_benchmarks")
+def test_inline_eval(eval_tester, inline_benchmark_id, inference_model):
+    eval_tester.poll_interval = 1
+    eval_tester.poll_timeout = 10
+    eval_tester.run_eval(inline_benchmark_id, inference_model, num_examples=3)
