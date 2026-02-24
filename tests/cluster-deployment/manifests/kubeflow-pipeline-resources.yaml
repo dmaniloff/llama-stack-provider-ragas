@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-credentials
+  namespace: ragas-test
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: "minioadmin"
+  AWS_SECRET_ACCESS_KEY: "minioadmin"
+  AWS_DEFAULT_REGION: "us-east-1"
+---
+# Allow the llama-stack pod to reach the DSP API server.
+# The DSP operator creates a restrictive NetworkPolicy that only allows
+# DSP components and workbench pods. This additional policy (NetworkPolicies
+# are additive) grants the llama-stack pod access on port 8888/8887.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-llama-stack-to-dspa
+  namespace: ragas-test
+spec:
+  podSelector:
+    matchLabels:
+      app: ds-pipeline-ragas-e2e-dspa
+      component: data-science-pipelines
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: llama-stack
+      ports:
+        - port: 8888
+          protocol: TCP
+        - port: 8887
+          protocol: TCP
+  policyTypes:
+    - Ingress
