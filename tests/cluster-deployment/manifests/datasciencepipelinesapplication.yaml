@@ -1,0 +1,40 @@
+# DataSciencePipelinesApplication (DSPA)
+#
+# Deploys a KFP v2 pipeline server managed by the ODH Data Science Pipelines
+# operator.  This creates the ml-pipeline API server (port 8888), workflow
+# controller, MariaDB, and a MinIO instance for pipeline artifacts.
+#
+# Requires: ODH operator with datasciencepipelines component Managed
+#           (see operators/datasciencecluster.yaml).
+#
+apiVersion: datasciencepipelinesapplications.opendatahub.io/v1
+kind: DataSciencePipelinesApplication
+metadata:
+  name: ragas-e2e-dspa
+  namespace: ragas-test
+spec:
+  dspVersion: v2
+  apiServer:
+    deploy: true
+    enableOauth: false
+    enableSamplePipeline: false
+  database:
+    disableHealthCheck: false
+    mariaDB:
+      deploy: true
+      pipelineDBName: mlpipeline
+      pvcSize: 10Gi
+      username: mlpipeline
+  objectStorage:
+    disableHealthCheck: false
+    minio:
+      deploy: true
+      bucket: mlpipeline
+      image: quay.io/minio/minio:latest
+      pvcSize: 10Gi
+  persistenceAgent:
+    deploy: true
+    numWorkers: 2
+  podToPodTLS: false
+  scheduledWorkflow:
+    deploy: true

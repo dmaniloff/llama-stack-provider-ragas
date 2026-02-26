@@ -1,0 +1,19 @@
+# Open Data Hub Operator
+#
+# Provides: DataScienceCluster, DSCInitialization, DataSciencePipelinesApplication CRDs
+# Source:   community-operators (OperatorHub)
+#
+# The ODH operator manages the Data Science Pipelines component (KFP v2),
+# which is used by the remote eval provider to orchestrate pipeline runs.
+#
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: opendatahub-operator
+  namespace: openshift-operators
+spec:
+  channel: fast
+  name: opendatahub-operator
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
