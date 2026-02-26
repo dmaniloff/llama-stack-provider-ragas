@@ -121,3 +121,11 @@ class RagasEvaluatorBase(Eval, BenchmarksProtocolPrivate, ABC):
         """Register a benchmark for evaluation."""
         self.benchmarks[task_def.identifier] = task_def
         logger.info(f"Registered benchmark: {task_def.identifier}")
+
+    async def unregister_benchmark(self, benchmark_id: str) -> None:
+        """Unregister a benchmark."""
+        removed = self.benchmarks.pop(benchmark_id, None)
+        if removed is not None:
+            logger.info(f"Unregistered benchmark: {benchmark_id}")
+        else:
+            logger.info(f"Benchmark not found (nothing to unregister): {benchmark_id}")
