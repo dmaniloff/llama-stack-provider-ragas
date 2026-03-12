@@ -282,11 +282,14 @@ def client(library_client):
 
 @pytest.fixture
 def inference_model():
+    # Default must use the ollama/ prefix to match the library client config
+    # built in library_stack_config (provider_model_id strips this prefix).
     return os.getenv("INFERENCE_MODEL", "ollama/granite3.3:2b")
 
 
 @pytest.fixture
 def embedding_model():
+    # Default must use the ollama/ prefix — see inference_model comment above.
     return os.getenv("EMBEDDING_MODEL", "ollama/all-minilm:latest")
 
 

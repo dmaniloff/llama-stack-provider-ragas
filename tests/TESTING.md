@@ -43,6 +43,18 @@ uv run pytest tests/test_e2e.py
 
 These tests exercise both the inline and remote eval providers through the Llama Stack eval API, including dataset registration, benchmark creation, and eval job execution with result polling.
 
+## Model configuration
+
+Each test module defines its own `inference_model` and `embedding_model` fixtures with defaults appropriate to its backend:
+
+| Module | Inference default | Embedding default | Backend |
+|--------|-------------------|-------------------|---------|
+| `test_inline_evaluation.py` | `ollama/granite3.3:2b` | `ollama/all-minilm:latest` | In-process Ollama (library client) |
+| `test_remote_wrappers.py` | `litellm/Mistral-Small-24B-W8A8` | `nomic-ai/nomic-embed-text-v1.5` | Mocked `LlamaStackClient` |
+| `test_e2e.py` | `Mistral-Small-24B-W8A8` | `nomic-ai/nomic-embed-text-v1.5` | OpenShift cluster (see `cluster-deployment/manifests/configmap-and-secrets.yaml`) |
+
+The `INFERENCE_MODEL` and `EMBEDDING_MODEL` environment variables override these defaults across all suites. When overriding, ensure the values match the models registered in the target environment — e.g. e2e defaults must match the OpenShift configmap, and inline defaults must use the `ollama/` prefix expected by the library client config.
+
 ## Cluster deployment (`cluster-deployment/`)
 
 Contains the Containerfile, deployment/teardown scripts, and Kubernetes manifests needed to stand up the e2e test environment on OpenShift. See `cluster-deployment/deploy-e2e.sh` to deploy.

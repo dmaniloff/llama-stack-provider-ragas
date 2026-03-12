@@ -26,11 +26,13 @@ def client(llama_stack_base_url):
 
 @pytest.fixture(scope="module")
 def inference_model():
+    # Default must match cluster-deployment/manifests/configmap-and-secrets.yaml
     return os.getenv("INFERENCE_MODEL", "Mistral-Small-24B-W8A8")
 
 
 @pytest.fixture(scope="module")
 def embedding_model():
+    # Default must match cluster-deployment/manifests/configmap-and-secrets.yaml
     return os.getenv("EMBEDDING_MODEL", "nomic-ai/nomic-embed-text-v1.5")
 
 

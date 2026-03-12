@@ -58,11 +58,13 @@ pytestmark = pytest.mark.unit
 
 @pytest.fixture
 def inference_model():
+    # Mocked by default; this value is only meaningful with --no-mock-client.
     return os.getenv("INFERENCE_MODEL", "litellm/Mistral-Small-24B-W8A8")
 
 
 @pytest.fixture
 def embedding_model():
+    # Mocked by default; this value is only meaningful with --no-mock-client.
     return os.getenv("EMBEDDING_MODEL", "nomic-ai/nomic-embed-text-v1.5")
 
 
