@@ -59,6 +59,7 @@ def eval_tester(
 
 @pytest.mark.usefixtures("register_benchmarks")
 def test_cluster_smoke(smoke_tester):
+    smoke_tester.test_providers_registered()
     smoke_tester.test_models_registered()
     smoke_tester.test_datasets_registered()
     smoke_tester.test_benchmarks_registered()
