@@ -63,7 +63,7 @@ def inference_model():
 
 @pytest.fixture
 def embedding_model():
-    return os.getenv("EMBEDDING_MODEL", "embedding/nomic-ai/nomic-embed-text-v1.5")
+    return os.getenv("EMBEDDING_MODEL", "nomic-ai/nomic-embed-text-v1.5")
 
 
 @pytest.fixture
