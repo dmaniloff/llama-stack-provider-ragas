@@ -1,0 +1,17 @@
+# Default owners for everything in the repo
+* @dmaniloff @ruivieira @Bobbins228
+
+# Source code
+/src/ @dmaniloff @ruivieira @Bobbins228
+
+# Tests
+/tests/ @dmaniloff @ruivieira @Bobbins228
+
+# CI/CD and GitHub configuration
+/.github/ @dmaniloff
+
+# Documentation
+/docs/ @dmaniloff @ruivieira
+
+# Distribution configuration
+/distribution/ @dmaniloff
