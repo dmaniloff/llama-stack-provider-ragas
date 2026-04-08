@@ -240,6 +240,15 @@ class LlamaStackRemoteLLM(BaseRagasLLM):
             logger.error(f"Async LLM generation failed: {str(e)}")
             raise
 
+    def is_finished(self, response: LLMResult) -> bool:
+        """Check if the LLM generation completed successfully."""
+        if response.llm_output and "llama_stack_responses" in response.llm_output:
+            return all(
+                r.get("stop_reason") not in (None, "out_of_tokens")
+                for r in response.llm_output["llama_stack_responses"]
+            )
+        return True
+
     def get_temperature(self, n: int) -> float:
         """Get temperature based on number of completions."""
         return 0.3 if n > 1 else 1e-8

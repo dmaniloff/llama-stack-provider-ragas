@@ -103,13 +103,13 @@ def register_benchmarks(
     client.alpha.benchmarks.register(
         benchmark_id=inline_benchmark_id,
         dataset_id=dataset_id,
-        scoring_functions=["semantic_similarity"],
+        scoring_functions=["answer_similarity"],
         provider_id="trustyai_ragas_inline",
     )
     client.alpha.benchmarks.register(
         benchmark_id=remote_benchmark_id,
         dataset_id=dataset_id,
-        scoring_functions=["semantic_similarity"],
+        scoring_functions=["answer_similarity"],
         provider_id="trustyai_ragas_remote",
     )
     yield
