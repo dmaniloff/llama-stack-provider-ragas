@@ -95,7 +95,7 @@ def run_ragas_evaluation(
 
     import pandas as pd
     from ragas import EvaluationDataset, evaluate
-    from ragas.dataset_schema import EvaluationResult
+    from ragas.evaluation import EvaluationResult
     from ragas.run_config import RunConfig
 
     from llama_stack_provider_ragas.compat import SamplingParams
