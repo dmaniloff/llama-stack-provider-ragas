@@ -66,7 +66,18 @@ class RagasEvaluatorBase(Eval, BenchmarksProtocolPrivate, ABC):
 
         if not metrics:
             logger.info("Using default metrics")
-            metrics = [METRIC_MAPPING[m] for m in self._DEFAULT_METRICS]
+            for name in self._DEFAULT_METRICS:
+                if name in METRIC_MAPPING:
+                    metrics.append(METRIC_MAPPING[name])
+                else:
+                    logger.warning(
+                        f"Default metric not found in METRIC_MAPPING: {name}"
+                    )
+            if not metrics:
+                raise RagasEvaluationError(
+                    "No valid default metrics found. Check that _DEFAULT_METRICS "
+                    "keys match METRIC_MAPPING entries."
+                )
 
         return metrics
 

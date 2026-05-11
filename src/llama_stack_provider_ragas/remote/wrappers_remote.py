@@ -247,7 +247,11 @@ class LlamaStackRemoteLLM(BaseRagasLLM):
                 r.get("stop_reason") not in (None, "out_of_tokens")
                 for r in response.llm_output["llama_stack_responses"]
             )
-        return True
+        return bool(
+            response.generations
+            and response.generations[0]
+            and any(g.text for g in response.generations[0])
+        )
 
     def get_temperature(self, n: int) -> float:
         """Get temperature based on number of completions."""
