@@ -324,6 +324,7 @@ def test_library_client_smoke(smoke_tester):
     smoke_tester.test_benchmarks_registered()
 
 
+@pytest.mark.parametrize("mocked_inference_response", ["4"], indirect=True)
 @pytest.mark.usefixtures("register_benchmarks")
 def test_inline_eval(eval_tester, inline_benchmark_id, inference_model):
     eval_tester.poll_interval = 1

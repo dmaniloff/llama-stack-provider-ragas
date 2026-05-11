@@ -39,6 +39,13 @@ class RagasEvaluatorBase(Eval, BenchmarksProtocolPrivate, ABC):
     def __init__(self):
         self.benchmarks: dict[str, Benchmark] = {}
 
+    _DEFAULT_METRICS = [
+        "answer_relevancy",
+        "context_precision",
+        "faithfulness",
+        "context_recall",
+    ]
+
     def _get_metrics(self, scoring_functions: list[str]) -> list:
         """Get the list of metrics to run based on scoring functions.
 
@@ -48,13 +55,6 @@ class RagasEvaluatorBase(Eval, BenchmarksProtocolPrivate, ABC):
         Returns:
             List of metrics (unconfigured - ragas_evaluate will configure them)
         """
-        from ragas.metrics import (
-            answer_relevancy,
-            context_precision,
-            context_recall,
-            faithfulness,
-        )
-
         metrics = []
 
         for metric_name in scoring_functions:
@@ -65,14 +65,19 @@ class RagasEvaluatorBase(Eval, BenchmarksProtocolPrivate, ABC):
                 logger.warning(f"Unknown metric: {metric_name}")
 
         if not metrics:
-            # Use default metrics if none specified or all invalid
             logger.info("Using default metrics")
-            metrics = [
-                answer_relevancy,
-                context_precision,
-                faithfulness,
-                context_recall,
-            ]
+            for name in self._DEFAULT_METRICS:
+                if name in METRIC_MAPPING:
+                    metrics.append(METRIC_MAPPING[name])
+                else:
+                    logger.warning(
+                        f"Default metric not found in METRIC_MAPPING: {name}"
+                    )
+            if not metrics:
+                raise RagasEvaluationError(
+                    "No valid default metrics found. Check that _DEFAULT_METRICS "
+                    "keys match METRIC_MAPPING entries."
+                )
 
         return metrics
 

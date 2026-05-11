@@ -29,6 +29,7 @@ import os
 import random
 
 import pytest
+from langchain_core.outputs import Generation, LLMResult
 from langchain_core.prompt_values import StringPromptValue
 from llama_stack_client import AsyncLlamaStackClient, LlamaStackClient
 from llama_stack_client.types.completion_create_response import (
@@ -42,7 +43,7 @@ from llama_stack_client.types.create_embeddings_response import (
 )
 from ragas import evaluate
 from ragas.evaluation import EvaluationResult
-from ragas.metrics import answer_relevancy
+from ragas.metrics import AnswerAccuracy, answer_relevancy
 from ragas.run_config import RunConfig
 
 from llama_stack_provider_ragas.compat import SamplingParams, TopPSamplingStrategy
@@ -283,6 +284,11 @@ async def test_remote_llm_async(lls_remote_llm):
             ),
             id="answer_relevancy",
         ),
+        pytest.param(
+            AnswerAccuracy(),
+            "4",
+            id="nv_accuracy",
+        ),
     ],
     indirect=["mocked_client_response"],
 )
@@ -315,3 +321,82 @@ def test_direct_evaluation(
     tolerance = 1e-10
     assert pandas_result[metric_to_test.name].min() >= -tolerance
     assert pandas_result[metric_to_test.name].max() <= 1 + tolerance
+
+
+class TestIsFinished:
+    """Tests for LlamaStackRemoteLLM.is_finished content-based fallback."""
+
+    def test_finished_with_stop_reason(self, lls_remote_llm):
+        result = LLMResult(
+            generations=[[Generation(text="Hello")]],
+            llm_output={
+                "provider": "llama_stack_remote",
+                "llama_stack_responses": [
+                    {"stop_reason": "stop", "content_length": 5, "has_logprobs": False}
+                ],
+            },
+        )
+        assert lls_remote_llm.is_finished(result) is True
+
+    def test_not_finished_out_of_tokens(self, lls_remote_llm):
+        result = LLMResult(
+            generations=[[Generation(text="Hello")]],
+            llm_output={
+                "provider": "llama_stack_remote",
+                "llama_stack_responses": [
+                    {
+                        "stop_reason": "out_of_tokens",
+                        "content_length": 5,
+                        "has_logprobs": False,
+                    }
+                ],
+            },
+        )
+        assert lls_remote_llm.is_finished(result) is False
+
+    def test_not_finished_none_stop_reason(self, lls_remote_llm):
+        result = LLMResult(
+            generations=[[Generation(text="Hello")]],
+            llm_output={
+                "provider": "llama_stack_remote",
+                "llama_stack_responses": [
+                    {"stop_reason": None, "content_length": 5, "has_logprobs": False}
+                ],
+            },
+        )
+        assert lls_remote_llm.is_finished(result) is False
+
+    def test_fallback_with_valid_generations(self, lls_remote_llm):
+        result = LLMResult(
+            generations=[[Generation(text="Hello")]],
+            llm_output=None,
+        )
+        assert lls_remote_llm.is_finished(result) is True
+
+    def test_fallback_with_empty_generations(self, lls_remote_llm):
+        result = LLMResult(
+            generations=[[]],
+            llm_output=None,
+        )
+        assert lls_remote_llm.is_finished(result) is False
+
+    def test_fallback_with_empty_text(self, lls_remote_llm):
+        result = LLMResult(
+            generations=[[Generation(text="")]],
+            llm_output=None,
+        )
+        assert lls_remote_llm.is_finished(result) is False
+
+    def test_fallback_missing_llama_stack_responses_key(self, lls_remote_llm):
+        result = LLMResult(
+            generations=[[Generation(text="Hello")]],
+            llm_output={"provider": "llama_stack_remote"},
+        )
+        assert lls_remote_llm.is_finished(result) is True
+
+    def test_fallback_no_generations(self, lls_remote_llm):
+        result = LLMResult(
+            generations=[],
+            llm_output=None,
+        )
+        assert lls_remote_llm.is_finished(result) is False

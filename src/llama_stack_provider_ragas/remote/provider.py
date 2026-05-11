@@ -9,7 +9,7 @@ def get_provider_spec() -> ProviderSpec:
         adapter_type=PROVIDER_TYPE,
         module="llama_stack_provider_ragas.remote",
         pip_packages=[
-            "ragas==0.3.0",
+            "ragas>=0.4.0,<0.5.0",
             "kfp>=2.5.0",
             "kfp-kubernetes>=2.0.0",
             "s3fs>=2024.12.0",
