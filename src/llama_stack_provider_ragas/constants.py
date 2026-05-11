@@ -1,23 +1,16 @@
-import warnings
-
-# Ragas v0.4.x emits deprecation warnings for module-level metric instances
-# imported from ragas.metrics. These still work with evaluate() and will be
-# migrated to the collections API in a future release.
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", category=DeprecationWarning, module="ragas")
-    from ragas.metrics import (
-        AnswerAccuracy,
-        ContextRelevance,
-        FactualCorrectness,
-        NoiseSensitivity,
-        ResponseGroundedness,
-        answer_relevancy,
-        answer_similarity,
-        context_entity_recall,
-        context_precision,
-        context_recall,
-        faithfulness,
-    )
+from ragas.metrics import (
+    AnswerAccuracy,
+    ContextRelevance,
+    FactualCorrectness,
+    NoiseSensitivity,
+    ResponseGroundedness,
+    answer_relevancy,
+    answer_similarity,
+    context_entity_recall,
+    context_precision,
+    context_recall,
+    faithfulness,
+)
 
 PROVIDER_TYPE = "trustyai_ragas"
 PROVIDER_ID_INLINE = "trustyai_ragas_inline"
