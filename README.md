@@ -7,6 +7,8 @@
 [![PyPI version](https://img.shields.io/pypi/v/llama_stack_provider_ragas.svg)](https://pypi.org/project/llama-stack-provider-ragas/)
 
 
+> **Maintenance Mode**: This repository is in maintenance mode. Provider version 0.7.0 targeting llama-stack 0.6.x is the final release. Only critical bug fixes will be accepted. No new features or support for newer llama-stack versions are planned.
+
 ## About
 This repository implements [Ragas](https://github.com/explodinggradients/ragas) as an out-of-tree [Llama Stack](https://github.com/meta-llama/llama-stack) evaluation provider.
 

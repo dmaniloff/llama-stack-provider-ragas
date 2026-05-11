@@ -16,13 +16,13 @@ branches are organized by llama-stack compatibility:
 | `release/0.4.x`  | 0.3.x              | 0.4.3+            |
 | `release/0.5.x`  | 0.4.x              | 0.5.4+            |
 | `release/0.6.x`  | 0.5.x              | 0.6.0+            |
-| `main`           | 0.6.x+             | 0.7.0+            |
+| `main`           | 0.6.x              | 0.7.0+            |
 
 ## Version Compatibility Table
 
 | Provider Version | Llama-Stack Dependency        | Python  | Release Branch   | Notes                                |
 |------------------|-------------------------------|---------|------------------|--------------------------------------|
-| 0.7.0            | >=0.6.0                       | >=3.12  | `main`           | Current latest release               |
+| 0.7.0            | >=0.6.0,<0.7.0                | >=3.12  | `main`           | Maintenance mode — final release     |
 | 0.6.1            | >=0.5.0                       | >=3.12  | `release/0.6.x`  | Maintenance release for lls 0.5.x    |
 | 0.5.4            | [client]>=0.4.2,<0.5.0        | >=3.12  | `release/0.5.x`  | Maintenance release for lls 0.4.x   |
 | 0.4.3            | [client]>=0.3.5,<0.4.0        | >=3.12  | `release/0.4.x`  | Maintenance release for lls 0.3.x   |
